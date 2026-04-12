@@ -14,6 +14,8 @@ const adminRoutes = require('./routes/admin');
 const commentRoutes = require('./routes/comments');
 const mixRoutes = require('./routes/mixes');
 const { ensureAuthenticated } = require('./middleware/auth');
+const { getSessions, getSessionTracks } = require('./lib/sessions');
+const { transcodeSession, isSessionCached } = require('./lib/transcode');
 
 const PORT = process.env.PORT || 3000;
 const CACHE_DIR = path.resolve(process.env.CACHE_DIR || './cache');
@@ -78,8 +80,41 @@ ready.then(() => {
 
   app.listen(PORT, () => {
     console.log(`[Insert Band Name Here] server running at http://localhost:${PORT}`);
+
+    // Background: pre-transcode all sessions on startup
+    precacheAllSessions();
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);
   process.exit(1);
 });
+
+async function precacheAllSessions() {
+  try {
+    console.log('[PRECACHE] Checking all sessions...');
+    const sessions = await getSessions();
+    let cached = 0;
+    let transcoded = 0;
+
+    for (const session of sessions) {
+      const trackFiles = await getSessionTracks(session.id);
+      if (isSessionCached(CACHE_DIR, session.id, trackFiles)) {
+        cached++;
+        continue;
+      }
+
+      console.log(`[PRECACHE] Transcoding ${session.id} (${trackFiles.length} tracks)...`);
+      try {
+        await transcodeSession(CACHE_DIR, session.id, trackFiles);
+        transcoded++;
+        console.log(`[PRECACHE] Done: ${session.id}`);
+      } catch (err) {
+        console.error(`[PRECACHE] Failed: ${session.id}`, err.message);
+      }
+    }
+
+    console.log(`[PRECACHE] Complete — ${cached} already cached, ${transcoded} newly transcoded.`);
+  } catch (err) {
+    console.error('[PRECACHE] Error:', err.message);
+  }
+}
