@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[Insert Band Name Here] - Admin</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎚</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .admin-container {
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 0 24px;
+    }
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .admin-header h2 { color: var(--accent); }
+    .back-link {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { color: var(--accent); }
+    .invite-form {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+    .invite-form input {
+      flex: 1;
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 0.9rem;
+    }
+    .invite-form input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .invite-form button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .invite-form button:hover { opacity: 0.9; }
+    .msg {
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 0.85rem;
+    }
+    .msg.success { background: rgba(100,200,100,0.15); color: #8c8; border: 1px solid #4a6; }
+    .msg.error { background: rgba(233,69,96,0.15); color: var(--accent); border: 1px solid var(--accent); }
+    .msg.hidden { display: none; }
+    .user-list { list-style: none; }
+    .user-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-strip);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--bg-surface);
+    }
+    .user-email { font-size: 0.9rem; }
+    .user-name { font-size: 0.75rem; color: var(--text-secondary); }
+    .user-status {
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+    }
+    .status-admin { background: var(--accent); color: #fff; }
+    .status-active { background: #4a6; color: #fff; }
+    .status-pending { background: var(--bg-surface); color: var(--text-secondary); }
+    .btn-remove {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+    .btn-remove:hover { border-color: var(--accent); color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>[Insert Band Name Here]</h1>
+  </header>
+  <div class="admin-container">
+    <div class="admin-header">
+      <h2>Manage Members</h2>
+      <a href="/" class="back-link">Back to Mixer</a>
+    </div>
+
+    <div class="invite-form">
+      <input type="email" id="invite-email" placeholder="Enter email to invite...">
+      <button id="btn-invite">Invite</button>
+    </div>
+
+    <div id="msg" class="msg hidden"></div>
+
+    <ul class="user-list" id="user-list"></ul>
+  </div>
+
+  <script>
+    const userList = document.getElementById('user-list');
+    const inviteEmail = document.getElementById('invite-email');
+    const btnInvite = document.getElementById('btn-invite');
+    const msgEl = document.getElementById('msg');
+
+    function showMsg(text, type) {
+      msgEl.textContent = text;
+      msgEl.className = 'msg ' + type;
+      setTimeout(() => { msgEl.className = 'msg hidden'; }, 4000);
+    }
+
+    async function loadUsers() {
+      const res = await fetch('/api/admin/users');
+      if (res.status === 403) {
+        document.querySelector('.admin-container').innerHTML = '<p style="text-align:center;color:var(--accent);margin-top:60px;">Admin access required.</p>';
+        return;
+      }
+      const users = await res.json();
+      userList.innerHTML = '';
+      users.forEach(u => {
+        const li = document.createElement('li');
+        li.className = 'user-item';
+
+        let status;
+        if (u.is_admin) status = '<span class="user-status status-admin">Admin</span>';
+        else if (u.last_login) status = '<span class="user-status status-active">Active</span>';
+        else status = '<span class="user-status status-pending">Pending</span>';
+
+        const avatar = u.picture
+          ? '<img class="user-avatar" src="' + u.picture + '" referrerpolicy="no-referrer">'
+          : '<div class="user-avatar"></div>';
+
+        li.innerHTML = `
+          <div class="user-info">
+            ${avatar}
+            <div>
+              <div class="user-email">${u.email} ${status}</div>
+              <div class="user-name">${u.name || 'Not yet signed in'}</div>
+            </div>
+          </div>
+          ${u.is_admin ? '' : '<button class="btn-remove" data-id="' + u.id + '">Remove</button>'}
+        `;
+        userList.appendChild(li);
+      });
+
+      userList.querySelectorAll('.btn-remove').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          if (!confirm('Remove this user? Their comments will also be deleted.')) return;
+          const res = await fetch('/api/admin/users/' + btn.dataset.id, { method: 'DELETE' });
+          if (res.ok) {
+            showMsg('User removed.', 'success');
+            loadUsers();
+          } else {
+            const data = await res.json();
+            showMsg(data.error || 'Failed to remove user.', 'error');
+          }
+        });
+      });
+    }
+
+    btnInvite.addEventListener('click', async () => {
+      const email = inviteEmail.value.trim();
+      if (!email) return;
+      const res = await fetch('/api/admin/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg('Invited ' + email, 'success');
+        inviteEmail.value = '';
+        loadUsers();
+      } else {
+        showMsg(data.error || 'Failed to invite.', 'error');
+      }
+    });
+
+    inviteEmail.addEventListener('keydown', e => {
+      if (e.key === 'Enter') btnInvite.click();
+    });
+
+    loadUsers();
+  </script>
+</body>
+</html>

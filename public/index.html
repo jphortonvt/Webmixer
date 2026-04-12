@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>[Insert Band Name Here]</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎚</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <h1>[Insert Band Name Here]</h1>
+    <div class="header-right">
+      <div class="session-selector">
+        <label for="session-select">Session:</label>
+        <select id="session-select" disabled>
+          <option value="">Loading sessions...</option>
+        </select>
+      </div>
+      <div id="user-info" class="user-info hidden">
+        <img id="user-avatar" class="user-avatar-small" src="" referrerpolicy="no-referrer">
+        <span id="user-name"></span>
+        <a href="/admin.html" id="admin-link" class="header-link hidden">Admin</a>
+        <a href="/auth/logout" class="header-link">Logout</a>
+      </div>
+    </div>
+  </header>
+
+  <div id="transport">
+    <button id="btn-play" disabled>&#9654; Play</button>
+    <button id="btn-pause" disabled>&#10074;&#10074; Pause</button>
+    <button id="btn-stop" disabled>&#9632; Stop</button>
+    <span id="time-display">00:00 / 00:00</span>
+    <div id="seek-container">
+      <input type="range" id="seek-bar" min="0" max="100" value="0" step="0.1" disabled>
+      <div id="comment-markers"></div>
+    </div>
+  </div>
+
+  <div id="loading" class="hidden">
+    <div class="spinner"></div>
+    <span id="loading-text">Loading tracks...</span>
+  </div>
+
+  <div id="mixer">
+    <!-- Channel strips are dynamically inserted here -->
+  </div>
+
+  <div id="mix-actions" class="hidden">
+    <button id="btn-save-mix">Save Mix</button>
+    <span id="mix-status"></span>
+  </div>
+
+  <div id="mix-save-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h3>Save Mix Settings</h3>
+      <p>Save current settings for <strong id="mix-save-session-name"></strong></p>
+      <div class="modal-field">
+        <label for="mix-copy-from">Copy from a previous session:</label>
+        <select id="mix-copy-from">
+          <option value="">-- Don't copy, use current settings --</option>
+        </select>
+      </div>
+      <div class="modal-buttons">
+        <button id="btn-mix-save-confirm" class="btn-primary">Save</button>
+        <button id="btn-mix-save-cancel" class="btn-secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="comments-panel" class="hidden">
+    <div class="comments-header">
+      <h3>Comments</h3>
+    </div>
+    <div class="comment-input-area">
+      <div class="comment-input-row">
+        <span class="comment-time-badge" id="comment-time-badge">00:00</span>
+        <input type="text" id="comment-input" placeholder="Add a comment at current time...">
+        <button id="btn-post-comment">Post</button>
+      </div>
+    </div>
+    <div id="comments-list"></div>
+  </div>
+
+  <script src="/js/mixer.js"></script>
+  <script src="/js/transport.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/comments.js"></script>
+  <script src="/js/mixes.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
