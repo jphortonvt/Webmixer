@@ -114,13 +114,13 @@
 
       // Load comments for this session
       Comments.loadComments(sessionId);
-
-      hideLoading();
     } catch (err) {
       console.error('Failed to load session:', err);
-      hideLoading();
       loadingText.textContent = 'Error loading session. Check console.';
       loadingEl.classList.remove('hidden');
+      return;
     }
+
+    hideLoading();
   });
 })();

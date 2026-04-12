@@ -20,6 +20,7 @@ const UI = (() => {
       <div class="channel-buttons">
         <button class="btn-mute" data-index="${index}">M</button>
         <button class="btn-solo" data-index="${index}">S</button>
+        <button class="btn-boost" data-index="${index}" title="Boost quiet tracks">B</button>
       </div>
       <div class="volume-container">
         <label>Vol</label>
@@ -81,6 +82,25 @@ const UI = (() => {
       applySolo();
     });
 
+    // Boost button — cycles through Off, +6dB, +12dB, +20dB
+    const boostBtn = strip.querySelector('.btn-boost');
+    const boostLevels = [
+      { label: 'B', multiplier: 1, dbLabel: '' },
+      { label: '+6', multiplier: 2, dbLabel: '+6dB' },
+      { label: '+12', multiplier: 4, dbLabel: '+12dB' },
+      { label: '+20', multiplier: 10, dbLabel: '+20dB' },
+    ];
+    boostBtn.dataset.boostIndex = 0;
+    boostBtn.addEventListener('click', () => {
+      let bi = (parseInt(boostBtn.dataset.boostIndex || 0) + 1) % boostLevels.length;
+      boostBtn.dataset.boostIndex = bi;
+      const level = boostLevels[bi];
+      boostBtn.textContent = level.label;
+      boostBtn.classList.toggle('active', bi > 0);
+      boostBtn.title = bi > 0 ? `Boost: ${level.dbLabel}` : 'Boost quiet tracks';
+      Mixer.setBoost(index, level.multiplier);
+    });
+
     return strip;
   }
 
@@ -126,11 +146,12 @@ const UI = (() => {
 
   function getSettings() {
     const strips = mixerEl.querySelectorAll('.channel-strip');
-    return Array.from(strips).map(strip => ({
+    return Array.from(strips).map((strip, i) => ({
       volume: parseInt(strip.querySelector('.volume-slider').value),
       pan: parseInt(strip.querySelector('.pan-slider').value),
       muted: strip.querySelector('.btn-mute').classList.contains('active'),
-      solo: strip.querySelector('.btn-solo').classList.contains('active')
+      solo: strip.querySelector('.btn-solo').classList.contains('active'),
+      boost: Mixer.getBoost(i)
     }));
   }
 
@@ -167,6 +188,27 @@ const UI = (() => {
       // Solo
       const soloBtn = strip.querySelector('.btn-solo');
       soloBtn.classList.toggle('active', s.solo);
+
+      // Boost
+      const boostBtn = strip.querySelector('.btn-boost');
+      const boostLevels = [
+        { label: 'B', multiplier: 1 },
+        { label: '+6', multiplier: 2 },
+        { label: '+12', multiplier: 4 },
+        { label: '+20', multiplier: 10 },
+      ];
+      const boostMultiplier = s.boost || 1;
+      const bIdx = boostLevels.findIndex(l => l.multiplier === boostMultiplier);
+      if (bIdx > 0) {
+        boostBtn.textContent = boostLevels[bIdx].label;
+        boostBtn.classList.add('active');
+      } else {
+        boostBtn.textContent = 'B';
+        boostBtn.classList.remove('active');
+      }
+      // Set internal boost index for cycling — store on the button element
+      boostBtn.dataset.boostIndex = bIdx >= 0 ? bIdx : 0;
+      Mixer.setBoost(i, boostMultiplier);
 
       // Apply to audio engine
       if (s.muted) {

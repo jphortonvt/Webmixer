@@ -146,8 +146,26 @@ const Mixer = (() => {
 
   function setVolume(trackIndex, value) {
     if (tracks[trackIndex]) {
-      tracks[trackIndex].gainNode.gain.value = value;
+      const track = tracks[trackIndex];
+      track._baseVolume = value;
+      track.gainNode.gain.value = value * (track._boostMultiplier || 1);
     }
+  }
+
+  function setBoost(trackIndex, multiplier) {
+    if (tracks[trackIndex]) {
+      const track = tracks[trackIndex];
+      track._boostMultiplier = multiplier;
+      const base = track._baseVolume != null ? track._baseVolume : track.gainNode.gain.value;
+      track.gainNode.gain.value = base * multiplier;
+    }
+  }
+
+  function getBoost(trackIndex) {
+    if (tracks[trackIndex]) {
+      return tracks[trackIndex]._boostMultiplier || 1;
+    }
+    return 1;
   }
 
   function setPan(trackIndex, value) {
@@ -201,6 +219,8 @@ const Mixer = (() => {
     seekTo,
     setVolume,
     setPan,
+    setBoost,
+    getBoost,
     getCurrentTime,
     getDuration,
     getIsPlaying,

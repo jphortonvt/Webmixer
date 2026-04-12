@@ -283,13 +283,15 @@ header h1 {
   font-family: monospace;
 }
 
-/* Mute/Solo buttons */
+/* Mute/Solo/Boost buttons */
 .channel-buttons {
   display: flex;
   gap: 4px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
-.btn-mute, .btn-solo {
+.btn-mute, .btn-solo, .btn-boost {
   width: 32px;
   height: 24px;
   font-size: 0.65rem;
@@ -312,6 +314,12 @@ header h1 {
   background: #ccaa00;
   color: #000;
   border-color: #ccaa00;
+}
+
+.btn-boost.active {
+  background: #33aa66;
+  color: #fff;
+  border-color: #33aa66;
 }
 
 /* Range input track styling */
