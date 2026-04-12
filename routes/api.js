@@ -6,12 +6,11 @@ const { ensureAuthenticated } = require('../middleware/auth');
 
 const router = express.Router();
 
-const AUDIO_DIR = path.resolve(process.env.AUDIO_DIR || './raw_audio');
 const CACHE_DIR = path.resolve(process.env.CACHE_DIR || './cache');
 
-router.get('/sessions', ensureAuthenticated, (req, res) => {
+router.get('/sessions', ensureAuthenticated, async (req, res) => {
   try {
-    const sessions = getSessions(AUDIO_DIR);
+    const sessions = await getSessions();
     res.json(sessions);
   } catch (err) {
     console.error('Error listing sessions:', err);
@@ -22,12 +21,12 @@ router.get('/sessions', ensureAuthenticated, (req, res) => {
 router.get('/sessions/:id/tracks', ensureAuthenticated, async (req, res) => {
   try {
     const sessionId = req.params.id;
-    const trackFiles = getSessionTracks(AUDIO_DIR, sessionId);
+    const trackFiles = await getSessionTracks(sessionId);
 
     // Transcode if not already cached
     if (!isSessionCached(CACHE_DIR, sessionId, trackFiles)) {
       console.log(`Transcoding session ${sessionId}...`);
-      await transcodeSession(AUDIO_DIR, CACHE_DIR, sessionId, trackFiles);
+      await transcodeSession(CACHE_DIR, sessionId, trackFiles);
       console.log(`Transcoding complete for ${sessionId}`);
     }
 
