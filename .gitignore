@@ -1,5 +1,6 @@
 node_modules/
 cache/
 data/
+raw_audio/
 .env
 .DS_Store

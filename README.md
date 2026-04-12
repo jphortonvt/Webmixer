@@ -28,8 +28,8 @@ A web-based multitrack audio mixer for band collaboration. Load recordings from 
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/web-mixer.git
-cd web-mixer
+git clone https://github.com/jphortonvt/Webmixer.git
+cd Webmixer
 npm install
 ```
 
