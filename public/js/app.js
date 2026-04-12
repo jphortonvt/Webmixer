@@ -74,7 +74,7 @@
     UI.clearMixer();
     Comments.loadComments(null);
     Mixes.hide();
-    showLoading('Preparing tracks (transcoding if needed)...');
+    showLoading('Loading session...');
 
     try {
       // Fetch track list (triggers transcoding on server if needed)
@@ -86,7 +86,7 @@
 
       // If server is still transcoding, poll until ready
       if (data.preparing) {
-        showLoading(`Preparing ${data.trackCount} tracks from cloud storage... (this may take a few minutes on first load)`);
+        showLoading(`Preparing ${data.trackCount} tracks from cloud storage... (first load may take a few minutes)`);
         data = await waitForTracks(sessionId);
       }
 
@@ -96,7 +96,7 @@
         return;
       }
 
-      showLoading(`Loading ${data.tracks.length} tracks into mixer...`);
+      showLoading(`Loading ${data.tracks.length} tracks...`);
 
       // Load audio buffers
       await Mixer.loadTracks(data.tracks);

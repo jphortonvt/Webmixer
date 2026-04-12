@@ -729,15 +729,179 @@ input[type="range"]::-webkit-slider-runnable-track {
 @media (max-width: 768px) {
   header {
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
+    padding: 12px 16px;
+    align-items: stretch;
   }
 
+  header h1 {
+    font-size: 1rem;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-right {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .session-selector {
+    width: 100%;
+  }
+
+  .session-selector label {
+    display: none;
+  }
+
+  #session-select {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+  }
+
+  #user-info {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  #user-name {
+    font-size: 0.75rem;
+  }
+
+  .header-link {
+    font-size: 0.7rem;
+    padding: 3px 6px;
+  }
+
+  /* Transport: stack controls and seek bar */
+  #transport {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  #transport button {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+  }
+
+  #time-display {
+    font-size: 0.8rem;
+    min-width: 90px;
+  }
+
+  /* Seek bar on its own full-width row */
+  #seek-container {
+    flex-basis: 100%;
+    order: 10;
+  }
+
+  /* Mixer — horizontally scrollable */
   #mixer {
-    padding: 12px;
+    padding: 12px 8px;
+    gap: 2px;
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .channel-strip {
-    width: 85px;
-    padding: 12px 8px;
+    width: 68px;
+    min-width: 68px;
+    padding: 10px 6px;
+    min-height: 340px;
+    gap: 6px;
+  }
+
+  .channel-strip .track-name {
+    font-size: 0.55rem;
+    max-width: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .channel-strip .track-number {
+    font-size: 0.9rem;
+  }
+
+  /* Buttons row */
+  .channel-buttons {
+    gap: 2px;
+  }
+
+  .btn-mute, .btn-solo, .btn-boost {
+    width: 20px;
+    height: 18px;
+    font-size: 0.5rem;
+  }
+
+  /* Volume slider */
+  .volume-slider {
+    height: 120px;
+  }
+
+  .volume-value {
+    font-size: 0.55rem;
+  }
+
+  .volume-container label {
+    font-size: 0.5rem;
+  }
+
+  /* Pan slider */
+  .pan-container {
+    width: 100%;
+    padding: 0;
+  }
+
+  .pan-slider {
+    width: 50px;
+  }
+
+  .pan-container label {
+    font-size: 0.5rem;
+  }
+
+  .pan-value {
+    font-size: 0.55rem;
+  }
+
+  /* Comments */
+  #comments-panel {
+    padding: 12px 12px 24px;
+  }
+
+  .comment-input-row {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  #comment-input {
+    min-width: 0;
+    flex: 1;
+  }
+
+  /* Mix actions */
+  #mix-actions {
+    padding: 10px 16px;
+  }
+
+  /* Modal */
+  .modal-content {
+    min-width: 0;
+    width: calc(100vw - 32px);
+    padding: 20px;
+  }
+
+  /* Loading */
+  #loading {
+    padding: 24px 16px;
+    font-size: 0.85rem;
   }
 }
