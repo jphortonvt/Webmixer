@@ -8,6 +8,9 @@ const router = express.Router();
 
 const CACHE_DIR = path.resolve(process.env.CACHE_DIR || './cache');
 
+// Track which sessions are currently being transcoded
+const transcodingInProgress = new Map();
+
 router.get('/sessions', ensureAuthenticated, async (req, res) => {
   try {
     const sessions = await getSessions();
@@ -23,19 +26,32 @@ router.get('/sessions/:id/tracks', ensureAuthenticated, async (req, res) => {
     const sessionId = req.params.id;
     const trackFiles = await getSessionTracks(sessionId);
 
-    // Transcode if not already cached
-    if (!isSessionCached(CACHE_DIR, sessionId, trackFiles)) {
-      console.log(`Transcoding session ${sessionId}...`);
-      await transcodeSession(CACHE_DIR, sessionId, trackFiles);
-      console.log(`Transcoding complete for ${sessionId}`);
+    if (isSessionCached(CACHE_DIR, sessionId, trackFiles)) {
+      // All tracks cached — return immediately
+      const tracks = trackFiles.map(f => ({
+        name: f,
+        url: `/audio/${sessionId}/${f.replace(/\.wav$/i, '.ogg')}`
+      }));
+      return res.json({ sessionId, tracks });
     }
 
-    const tracks = trackFiles.map(f => ({
-      name: f,
-      url: `/audio/${sessionId}/${f.replace(/\.wav$/i, '.ogg')}`
-    }));
+    // Not cached — start transcoding in background if not already running
+    if (!transcodingInProgress.has(sessionId)) {
+      console.log(`Transcoding session ${sessionId}...`);
+      const promise = transcodeSession(CACHE_DIR, sessionId, trackFiles)
+        .then(() => {
+          console.log(`Transcoding complete for ${sessionId}`);
+          transcodingInProgress.delete(sessionId);
+        })
+        .catch(err => {
+          console.error(`Transcoding failed for ${sessionId}:`, err);
+          transcodingInProgress.delete(sessionId);
+        });
+      transcodingInProgress.set(sessionId, promise);
+    }
 
-    res.json({ sessionId, tracks });
+    // Return a "preparing" response so the frontend can poll
+    res.json({ sessionId, preparing: true, trackCount: trackFiles.length });
   } catch (err) {
     console.error('Error getting tracks:', err);
     if (err.message === 'Session not found') {

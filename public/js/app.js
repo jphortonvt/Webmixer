@@ -21,6 +21,24 @@
     loadingEl.classList.add('hidden');
   }
 
+  // Poll for tracks until transcoding is complete
+  async function waitForTracks(sessionId) {
+    const maxAttempts = 120; // 10 minutes max (120 x 5s)
+    for (let i = 0; i < maxAttempts; i++) {
+      await new Promise(r => setTimeout(r, 5000));
+      showLoading(`Preparing tracks from cloud storage... (this may take a few minutes on first load)`);
+
+      const res = await fetch(`/api/sessions/${sessionId}/tracks`);
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      const data = await res.json();
+
+      if (!data.preparing) {
+        return data; // Tracks are ready
+      }
+    }
+    throw new Error('Transcoding timed out');
+  }
+
   // Load session list
   try {
     const res = await fetch('/api/sessions');
@@ -64,7 +82,13 @@
       if (!res.ok) {
         throw new Error(`Server error: ${res.status}`);
       }
-      const data = await res.json();
+      let data = await res.json();
+
+      // If server is still transcoding, poll until ready
+      if (data.preparing) {
+        showLoading(`Preparing ${data.trackCount} tracks from cloud storage... (this may take a few minutes on first load)`);
+        data = await waitForTracks(sessionId);
+      }
 
       if (!data.tracks || data.tracks.length === 0) {
         hideLoading();
