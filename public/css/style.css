@@ -70,6 +70,25 @@ header h1 {
   border-color: var(--accent);
 }
 
+.btn-edit-name {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  line-height: 1;
+}
+
+.btn-edit-name:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-edit-name.hidden { display: none; }
+
 /* Transport */
 #transport {
   display: flex;

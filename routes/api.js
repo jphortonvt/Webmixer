@@ -3,6 +3,7 @@ const path = require('path');
 const { getSessions, getSessionTracks } = require('../lib/sessions');
 const { transcodeSession, isSessionCached } = require('../lib/transcode');
 const { ensureAuthenticated } = require('../middleware/auth');
+const { getDb } = require('../lib/db');
 
 const router = express.Router();
 
@@ -14,11 +15,49 @@ const transcodingInProgress = new Map();
 router.get('/sessions', ensureAuthenticated, async (req, res) => {
   try {
     const sessions = await getSessions();
+    const db = getDb();
+
+    // Attach custom names from the database
+    const names = db.prepare('SELECT session_id, name FROM session_names').all();
+    const nameMap = {};
+    for (const n of names) {
+      nameMap[n.session_id] = n.name;
+    }
+
+    for (const s of sessions) {
+      s.customName = nameMap[s.id] || null;
+    }
+
     res.json(sessions);
   } catch (err) {
     console.error('Error listing sessions:', err);
     res.status(500).json({ error: 'Failed to list sessions' });
   }
+});
+
+// Set or update a session's custom name
+router.put('/sessions/:id/name', ensureAuthenticated, (req, res) => {
+  const sessionId = req.params.id;
+  const { name } = req.body;
+
+  if (!name || !name.trim()) {
+    // Delete the name
+    const db = getDb();
+    db.prepare('DELETE FROM session_names WHERE session_id = ?').run(sessionId);
+    return res.json({ sessionId, name: null });
+  }
+
+  const db = getDb();
+  const existing = db.prepare('SELECT session_id FROM session_names WHERE session_id = ?').get(sessionId);
+  if (existing) {
+    db.prepare('UPDATE session_names SET name = ?, updated_by = ?, updated_at = datetime(\'now\') WHERE session_id = ?')
+      .run(name.trim(), req.user.id, sessionId);
+  } else {
+    db.prepare('INSERT INTO session_names (session_id, name, updated_by) VALUES (?, ?, ?)')
+      .run(sessionId, name.trim(), req.user.id);
+  }
+
+  res.json({ sessionId, name: name.trim() });
 });
 
 router.get('/sessions/:id/tracks', ensureAuthenticated, async (req, res) => {

@@ -3,6 +3,8 @@
   const sessionSelect = document.getElementById('session-select');
   const loadingEl = document.getElementById('loading');
   const loadingText = document.getElementById('loading-text');
+  const editNameBtn = document.getElementById('btn-edit-name');
+  let sessionsList = []; // cached for refreshing dropdown
 
   // Initialize auth first
   const user = await Auth.init();
@@ -39,27 +41,63 @@
     throw new Error('Transcoding timed out');
   }
 
+  function renderSessionDropdown(selectedId) {
+    const currentValue = selectedId || sessionSelect.value;
+    sessionSelect.innerHTML = '<option value="">-- Select a session --</option>';
+    sessionsList.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      const nameStr = s.customName ? ` — ${s.customName}` : '';
+      opt.textContent = `${s.label}${nameStr} (${s.trackCount} tracks)`;
+      sessionSelect.appendChild(opt);
+    });
+    sessionSelect.value = currentValue;
+    sessionSelect.disabled = false;
+  }
+
   // Load session list
   try {
     const res = await fetch('/api/sessions');
-    const sessions = await res.json();
-
-    sessionSelect.innerHTML = '<option value="">-- Select a session --</option>';
-    sessions.forEach(s => {
-      const opt = document.createElement('option');
-      opt.value = s.id;
-      opt.textContent = `${s.label} (${s.trackCount} tracks)`;
-      sessionSelect.appendChild(opt);
-    });
-    sessionSelect.disabled = false;
+    sessionsList = await res.json();
+    renderSessionDropdown();
   } catch (err) {
     console.error('Failed to load sessions:', err);
     sessionSelect.innerHTML = '<option value="">Failed to load sessions</option>';
   }
 
+  // Edit session name button
+  editNameBtn.addEventListener('click', async () => {
+    const sessionId = sessionSelect.value;
+    if (!sessionId) return;
+
+    const session = sessionsList.find(s => s.id === sessionId);
+    const currentName = session?.customName || '';
+    const newName = prompt('Enter a name for this session (leave blank to clear):', currentName);
+
+    if (newName === null) return; // cancelled
+
+    try {
+      const res = await fetch(`/api/sessions/${sessionId}/name`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (!res.ok) throw new Error('Failed to save name');
+      const data = await res.json();
+
+      // Update cached session list and re-render dropdown
+      if (session) session.customName = data.name;
+      renderSessionDropdown(sessionId);
+    } catch (err) {
+      console.error('Failed to update session name:', err);
+      alert('Failed to save session name');
+    }
+  });
+
   // Handle session selection
   sessionSelect.addEventListener('change', async () => {
     const sessionId = sessionSelect.value;
+    editNameBtn.classList.toggle('hidden', !sessionId);
     if (!sessionId) {
       Mixer.stop();
       Transport.disable();
