@@ -105,6 +105,65 @@
       cursor: pointer;
     }
     .btn-remove:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Upload section */
+    .section-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 32px 0;
+    }
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 32px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 16px;
+    }
+    .upload-area:hover, .upload-area.dragover {
+      border-color: var(--accent);
+      background: rgba(233, 69, 96, 0.05);
+    }
+    .upload-area p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+    .upload-area .upload-hint {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      opacity: 0.7;
+    }
+    .upload-file-input { display: none; }
+    .upload-progress {
+      margin-top: 16px;
+    }
+    .upload-progress.hidden { display: none; }
+    .progress-bar-container {
+      background: var(--bg-surface);
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      transition: width 0.3s;
+      width: 0%;
+    }
+    .progress-text {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+    .upload-results {
+      font-size: 0.85rem;
+      margin-top: 12px;
+    }
+    .upload-results.hidden { display: none; }
   </style>
 </head>
 <body>
@@ -125,6 +184,29 @@
     <div id="msg" class="msg hidden"></div>
 
     <ul class="user-list" id="user-list"></ul>
+
+    <hr class="section-divider">
+
+    <div class="admin-header">
+      <h2>Upload Sessions</h2>
+    </div>
+
+    <div class="upload-area" id="upload-area">
+      <p>Click to select session folders or drag &amp; drop</p>
+      <p class="upload-hint">Select one or more folders containing WAV files (e.g., 251213_000100/TRACK01.WAV)</p>
+      <input type="file" class="upload-file-input" id="upload-input" webkitdirectory multiple>
+    </div>
+
+    <div id="upload-file-list"></div>
+
+    <div class="upload-progress hidden" id="upload-progress">
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="progress-text" id="progress-text">Uploading...</div>
+    </div>
+
+    <div class="upload-results hidden" id="upload-results"></div>
   </div>
 
   <script>
@@ -211,6 +293,120 @@
     });
 
     loadUsers();
+
+    // --- Upload functionality ---
+    const uploadArea = document.getElementById('upload-area');
+    const uploadInput = document.getElementById('upload-input');
+    const uploadProgress = document.getElementById('upload-progress');
+    const progressBar = document.getElementById('progress-bar');
+    const progressText = document.getElementById('progress-text');
+    const uploadResults = document.getElementById('upload-results');
+    const uploadFileList = document.getElementById('upload-file-list');
+
+    uploadArea.addEventListener('click', () => uploadInput.click());
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      // Drop doesn't work well with directories in most browsers,
+      // so just trigger the file picker
+      uploadInput.click();
+    });
+
+    uploadInput.addEventListener('change', async () => {
+      const files = Array.from(uploadInput.files);
+      if (files.length === 0) return;
+
+      // Filter to WAV files only
+      const wavFiles = files.filter(f => /\.wav$/i.test(f.name));
+
+      if (wavFiles.length === 0) {
+        showMsg('No WAV files found in the selected folder(s).', 'error');
+        return;
+      }
+
+      // Show what will be uploaded
+      const folderMap = {};
+      for (const f of wavFiles) {
+        const path = f.webkitRelativePath || f.name;
+        const parts = path.split('/');
+        // Find session folder
+        let folder = 'Unknown';
+        for (const p of parts) {
+          if (/^\d{6}_\d{6}$/.test(p)) { folder = p; break; }
+        }
+        if (!folderMap[folder]) folderMap[folder] = [];
+        folderMap[folder].push(f);
+      }
+
+      const folderNames = Object.keys(folderMap);
+      const totalSize = wavFiles.reduce((sum, f) => sum + f.size, 0);
+      const sizeMB = (totalSize / 1024 / 1024).toFixed(0);
+
+      if (!confirm(`Upload ${wavFiles.length} WAV files from ${folderNames.length} session(s)? (${sizeMB} MB total)\n\nSessions:\n${folderNames.join('\n')}`)) {
+        uploadInput.value = '';
+        return;
+      }
+
+      // Upload files one at a time to avoid memory issues
+      uploadProgress.classList.remove('hidden');
+      uploadResults.classList.add('hidden');
+      let uploaded = 0;
+      let failed = 0;
+
+      for (let i = 0; i < wavFiles.length; i++) {
+        const file = wavFiles[i];
+        const percent = Math.round((i / wavFiles.length) * 100);
+        progressBar.style.width = percent + '%';
+        progressText.textContent = `Uploading ${i + 1}/${wavFiles.length}: ${file.webkitRelativePath || file.name}`;
+
+        const formData = new FormData();
+        formData.append('files', file, file.webkitRelativePath || file.name);
+
+        try {
+          const res = await fetch('/api/admin/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          const data = await res.json();
+          if (res.ok && data.uploaded > 0) {
+            uploaded++;
+          } else {
+            failed++;
+          }
+        } catch (err) {
+          console.error('Upload failed:', err);
+          failed++;
+        }
+      }
+
+      progressBar.style.width = '100%';
+      progressText.textContent = 'Upload complete!';
+
+      uploadResults.classList.remove('hidden');
+      uploadResults.innerHTML = `
+        <div class="msg success">
+          Uploaded ${uploaded} file(s) to ${folderNames.length} session(s).
+          ${failed > 0 ? `<br>${failed} file(s) failed.` : ''}
+        </div>
+      `;
+
+      uploadInput.value = '';
+
+      // Hide progress after a moment
+      setTimeout(() => {
+        uploadProgress.classList.add('hidden');
+      }, 2000);
+    });
   </script>
 </body>
 </html>
