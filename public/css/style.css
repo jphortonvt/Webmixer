@@ -341,6 +341,11 @@ header h1 {
   border-color: #33aa66;
 }
 
+.btn-boost.active.cut {
+  background: #3388cc;
+  border-color: #3388cc;
+}
+
 /* Range input track styling */
 input[type="range"] {
   -webkit-appearance: none;

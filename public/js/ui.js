@@ -20,7 +20,7 @@ const UI = (() => {
       <div class="channel-buttons">
         <button class="btn-mute" data-index="${index}">M</button>
         <button class="btn-solo" data-index="${index}">S</button>
-        <button class="btn-boost" data-index="${index}" title="Boost quiet tracks">B</button>
+        <button class="btn-boost" data-index="${index}" title="Trim gain">T</button>
       </div>
       <div class="volume-container">
         <label>Vol</label>
@@ -82,13 +82,16 @@ const UI = (() => {
       applySolo();
     });
 
-    // Boost button — cycles through Off, +6dB, +12dB, +20dB
+    // Gain trim button — cycles through cut and boost levels
     const boostBtn = strip.querySelector('.btn-boost');
     const boostLevels = [
-      { label: 'B', multiplier: 1, dbLabel: '' },
-      { label: '+6', multiplier: 2, dbLabel: '+6dB' },
-      { label: '+12', multiplier: 4, dbLabel: '+12dB' },
-      { label: '+20', multiplier: 10, dbLabel: '+20dB' },
+      { label: 'T', multiplier: 1, dbLabel: '', css: '' },
+      { label: '-20', multiplier: 0.1, dbLabel: '-20dB', css: 'cut' },
+      { label: '-12', multiplier: 0.25, dbLabel: '-12dB', css: 'cut' },
+      { label: '-6', multiplier: 0.5, dbLabel: '-6dB', css: 'cut' },
+      { label: '+6', multiplier: 2, dbLabel: '+6dB', css: 'boost' },
+      { label: '+12', multiplier: 4, dbLabel: '+12dB', css: 'boost' },
+      { label: '+20', multiplier: 10, dbLabel: '+20dB', css: 'boost' },
     ];
     boostBtn.dataset.boostIndex = 0;
     boostBtn.addEventListener('click', () => {
@@ -96,8 +99,10 @@ const UI = (() => {
       boostBtn.dataset.boostIndex = bi;
       const level = boostLevels[bi];
       boostBtn.textContent = level.label;
-      boostBtn.classList.toggle('active', bi > 0);
-      boostBtn.title = bi > 0 ? `Boost: ${level.dbLabel}` : 'Boost quiet tracks';
+      boostBtn.classList.remove('active', 'cut');
+      if (level.css === 'boost') boostBtn.classList.add('active');
+      if (level.css === 'cut') boostBtn.classList.add('active', 'cut');
+      boostBtn.title = bi > 0 ? `Trim: ${level.dbLabel}` : 'Trim gain';
       Mixer.setBoost(index, level.multiplier);
     });
 
@@ -189,24 +194,27 @@ const UI = (() => {
       const soloBtn = strip.querySelector('.btn-solo');
       soloBtn.classList.toggle('active', s.solo);
 
-      // Boost
+      // Trim (boost/cut)
       const boostBtn = strip.querySelector('.btn-boost');
       const boostLevels = [
-        { label: 'B', multiplier: 1 },
-        { label: '+6', multiplier: 2 },
-        { label: '+12', multiplier: 4 },
-        { label: '+20', multiplier: 10 },
+        { label: 'T', multiplier: 1, css: '' },
+        { label: '-20', multiplier: 0.1, css: 'cut' },
+        { label: '-12', multiplier: 0.25, css: 'cut' },
+        { label: '-6', multiplier: 0.5, css: 'cut' },
+        { label: '+6', multiplier: 2, css: 'boost' },
+        { label: '+12', multiplier: 4, css: 'boost' },
+        { label: '+20', multiplier: 10, css: 'boost' },
       ];
       const boostMultiplier = s.boost || 1;
       const bIdx = boostLevels.findIndex(l => l.multiplier === boostMultiplier);
+      boostBtn.classList.remove('active', 'cut');
       if (bIdx > 0) {
         boostBtn.textContent = boostLevels[bIdx].label;
-        boostBtn.classList.add('active');
+        if (boostLevels[bIdx].css === 'boost') boostBtn.classList.add('active');
+        if (boostLevels[bIdx].css === 'cut') boostBtn.classList.add('active', 'cut');
       } else {
-        boostBtn.textContent = 'B';
-        boostBtn.classList.remove('active');
+        boostBtn.textContent = 'T';
       }
-      // Set internal boost index for cycling — store on the button element
       boostBtn.dataset.boostIndex = bIdx >= 0 ? bIdx : 0;
       Mixer.setBoost(i, boostMultiplier);
 
