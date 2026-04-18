@@ -88,7 +88,7 @@ router.post('/upload', ensureAdmin, (req, res, next) => {
     const rawPath = (relativePaths[fi] || file.originalname || '').replace(/\\/g, '/');
     const parts = rawPath.split('/');
 
-    console.log(`[UPLOAD] Processing: originalname="${file.originalname}", relativePath="${relativePaths[fi] || '(none)}", parts=${JSON.stringify(parts)}`);
+    console.log(`[UPLOAD] Processing: originalname=${file.originalname}, relativePath=${relativePaths[fi] || '(none)'}, parts=${JSON.stringify(parts)}`);
 
     // Find the session folder part (YYMMDD_HHMMSS pattern)
     let sessionId = null;
