@@ -16,6 +16,7 @@ const mixRoutes = require('./routes/mixes');
 const { ensureAuthenticated } = require('./middleware/auth');
 const { getSessions, getSessionTracks } = require('./lib/sessions');
 const { transcodeSession, isSessionCached } = require('./lib/transcode');
+const { configureCors } = require('./lib/b2');
 
 const PORT = process.env.PORT || 3000;
 const CACHE_DIR = path.resolve(process.env.CACHE_DIR || './cache');
@@ -80,6 +81,9 @@ ready.then(() => {
 
   app.listen(PORT, () => {
     console.log(`[Insert Band Name Here] server running at http://localhost:${PORT}`);
+
+    // Configure B2 CORS for direct browser uploads
+    configureCors();
 
     // Background: pre-transcode all sessions on startup
     precacheAllSessions();

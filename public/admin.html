@@ -497,7 +497,9 @@
       let uploaded = 0;
       let failed = 0;
 
-      let skippedDetails = [];
+      const FOLDER_PATTERN = /^\d{6}_\d{6}$/;
+      let skipped = 0;
+      let errors = [];
 
       for (let i = 0; i < allFiles.length; i++) {
         const file = allFiles[i];
@@ -506,28 +508,52 @@
         progressBar.style.width = percent + '%';
         progressText.textContent = `Uploading ${i + 1}/${allFiles.length}: ${relPath}`;
 
-        const formData = new FormData();
-        formData.append('files', file, relPath);
-        // Send relative path as separate field (browsers may strip paths from filenames)
-        formData.append('relativePaths', relPath);
+        // Parse session folder and filename from the relative path
+        const parts = relPath.split('/');
+        let sessionId = null, fileName = null;
+        for (let pi = 0; pi < parts.length; pi++) {
+          if (FOLDER_PATTERN.test(parts[pi])) {
+            sessionId = parts[pi];
+            fileName = parts.slice(pi + 1).join('/');
+            break;
+          }
+        }
+
+        if (!sessionId || !fileName) {
+          skipped++;
+          errors.push(relPath + ': no YYMMDD_HHMMSS folder in path');
+          continue;
+        }
+
+        const key = sessionId + '/' + fileName;
 
         try {
-          const res = await fetch('/api/admin/upload', {
+          // Step 1: Get a pre-signed URL from the server (tiny request, no file data)
+          const urlRes = await fetch('/api/admin/upload-url', {
             method: 'POST',
-            body: formData,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key }),
           });
-          const data = await res.json();
-          if (res.ok && data.uploaded > 0) {
-            uploaded++;
-          } else {
-            failed++;
-            if (data.details && data.details.length > 0) {
-              skippedDetails.push(...data.details);
-            }
+          if (!urlRes.ok) {
+            const err = await urlRes.json();
+            throw new Error(err.error || 'Failed to get upload URL');
           }
+          const { url } = await urlRes.json();
+
+          // Step 2: Upload file directly to B2 (browser -> B2, no server memory used)
+          const putRes = await fetch(url, {
+            method: 'PUT',
+            body: file,
+            headers: { 'Content-Type': 'audio/wav' },
+          });
+          if (!putRes.ok) {
+            throw new Error('B2 upload failed: ' + putRes.status);
+          }
+          uploaded++;
         } catch (err) {
-          console.error('Upload failed:', err);
+          console.error('Upload failed:', key, err);
           failed++;
+          errors.push(key + ': ' + err.message);
         }
       }
 
@@ -539,10 +565,12 @@
       if (uploaded > 0) {
         resultHtml += `<div class="msg success">Uploaded ${uploaded} file(s) to ${folderNames.length} session(s).</div>`;
       }
-      if (failed > 0) {
-        let failMsg = `${failed} file(s) failed or were skipped.`;
-        if (skippedDetails.length > 0) {
-          failMsg += '<br>' + skippedDetails.map(d => `${d.file}: ${d.reason}`).join('<br>');
+      if (failed > 0 || skipped > 0) {
+        let failMsg = '';
+        if (failed > 0) failMsg += failed + ' file(s) failed. ';
+        if (skipped > 0) failMsg += skipped + ' file(s) skipped. ';
+        if (errors.length > 0) {
+          failMsg += '<br><small>' + errors.join('<br>') + '</small>';
         }
         resultHtml += `<div class="msg error">${failMsg}</div>`;
       }
