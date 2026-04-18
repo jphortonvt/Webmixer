@@ -497,14 +497,19 @@
       let uploaded = 0;
       let failed = 0;
 
+      let skippedDetails = [];
+
       for (let i = 0; i < allFiles.length; i++) {
         const file = allFiles[i];
+        const relPath = file.webkitRelativePath || file.name;
         const percent = Math.round((i / allFiles.length) * 100);
         progressBar.style.width = percent + '%';
-        progressText.textContent = `Uploading ${i + 1}/${allFiles.length}: ${file.webkitRelativePath || file.name}`;
+        progressText.textContent = `Uploading ${i + 1}/${allFiles.length}: ${relPath}`;
 
         const formData = new FormData();
-        formData.append('files', file, file.webkitRelativePath || file.name);
+        formData.append('files', file, relPath);
+        // Send relative path as separate field (browsers may strip paths from filenames)
+        formData.append('relativePaths', relPath);
 
         try {
           const res = await fetch('/api/admin/upload', {
@@ -516,6 +521,9 @@
             uploaded++;
           } else {
             failed++;
+            if (data.details && data.details.length > 0) {
+              skippedDetails.push(...data.details);
+            }
           }
         } catch (err) {
           console.error('Upload failed:', err);
@@ -527,12 +535,21 @@
       progressText.textContent = 'Upload complete!';
 
       uploadResults.classList.remove('hidden');
-      uploadResults.innerHTML = `
-        <div class="msg success">
-          Uploaded ${uploaded} file(s) to ${folderNames.length} session(s).
-          ${failed > 0 ? `<br>${failed} file(s) failed.` : ''}
-        </div>
-      `;
+      let resultHtml = '';
+      if (uploaded > 0) {
+        resultHtml += `<div class="msg success">Uploaded ${uploaded} file(s) to ${folderNames.length} session(s).</div>`;
+      }
+      if (failed > 0) {
+        let failMsg = `${failed} file(s) failed or were skipped.`;
+        if (skippedDetails.length > 0) {
+          failMsg += '<br>' + skippedDetails.map(d => `${d.file}: ${d.reason}`).join('<br>');
+        }
+        resultHtml += `<div class="msg error">${failMsg}</div>`;
+      }
+      if (!resultHtml) {
+        resultHtml = '<div class="msg error">No files were uploaded.</div>';
+      }
+      uploadResults.innerHTML = resultHtml;
 
       // Clear queue
       fileQueue = [];

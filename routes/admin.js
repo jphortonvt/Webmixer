@@ -60,19 +60,35 @@ router.delete('/users/:id', ensureAdmin, (req, res) => {
 
 // Upload audio files to B2
 // Accepts multiple files with folder paths preserved via webkitdirectory
-router.post('/upload', ensureAdmin, upload.array('files'), async (req, res) => {
+router.post('/upload', ensureAdmin, (req, res, next) => {
+  upload.array('files')(req, res, (err) => {
+    if (err) {
+      console.error('[UPLOAD] Multer error:', err.message);
+      return res.status(400).json({ error: err.message, uploaded: 0, skipped: 0, errors: [], details: [] });
+    }
+    next();
+  });
+}, async (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'No files uploaded' });
   }
 
-  const results = { uploaded: 0, skipped: 0, errors: [] };
+  const results = { uploaded: 0, skipped: 0, errors: [], details: [] };
   const FOLDER_PATTERN = /^\d{6}_\d{6}$/;
   const WAV_PATTERN = /\.wav$/i;
 
-  for (const file of req.files) {
-    // The original path from webkitdirectory is in file.originalname
-    // It may be like "251213_000100/TRACK01.WAV" or "raw_audio/251213_000100/TRACK01.WAV"
-    const parts = file.originalname.replace(/\\/g, '/').split('/');
+  // The relative paths may come as a separate field (since browsers strip paths from filenames)
+  const relativePaths = req.body.relativePaths
+    ? (Array.isArray(req.body.relativePaths) ? req.body.relativePaths : [req.body.relativePaths])
+    : [];
+
+  for (let fi = 0; fi < req.files.length; fi++) {
+    const file = req.files[fi];
+    // Use the explicit relativePath field if available, fall back to originalname
+    const rawPath = (relativePaths[fi] || file.originalname || '').replace(/\\/g, '/');
+    const parts = rawPath.split('/');
+
+    console.log(`[UPLOAD] Processing: originalname="${file.originalname}", relativePath="${relativePaths[fi] || '(none)}", parts=${JSON.stringify(parts)}`);
 
     // Find the session folder part (YYMMDD_HHMMSS pattern)
     let sessionId = null;
@@ -86,12 +102,15 @@ router.post('/upload', ensureAdmin, upload.array('files'), async (req, res) => {
     }
 
     if (!sessionId || !fileName) {
+      console.log(`[UPLOAD] Skipped (no session folder found in path): ${rawPath}`);
       results.skipped++;
+      results.details.push({ file: rawPath, reason: 'No YYMMDD_HHMMSS folder found in path' });
       continue;
     }
 
     if (!WAV_PATTERN.test(fileName)) {
       results.skipped++;
+      results.details.push({ file: rawPath, reason: 'Not a WAV file' });
       continue;
     }
 
@@ -99,7 +118,7 @@ router.post('/upload', ensureAdmin, upload.array('files'), async (req, res) => {
     try {
       await uploadFile(key, file.buffer, 'audio/wav');
       results.uploaded++;
-      console.log(`[UPLOAD] ${key} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+      console.log(`[UPLOAD] Success: ${key} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
     } catch (err) {
       console.error(`[UPLOAD] Failed: ${key}`, err.message);
       results.errors.push({ file: key, error: err.message });
