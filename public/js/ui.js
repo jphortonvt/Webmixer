@@ -20,7 +20,8 @@ const UI = (() => {
       <div class="channel-buttons">
         <button class="btn-mute" data-index="${index}">M</button>
         <button class="btn-solo" data-index="${index}">S</button>
-        <button class="btn-boost" data-index="${index}" title="Trim gain">T</button>
+        <button class="btn-trim" data-index="${index}" title="Trim">T</button>
+        <button class="btn-boost" data-index="${index}" title="Boost">B</button>
       </div>
       <div class="volume-container">
         <label>Vol</label>
@@ -82,27 +83,57 @@ const UI = (() => {
       applySolo();
     });
 
-    // Gain trim button — cycles through cut and boost levels
+    // Trim button — cycles through cut levels
+    const trimBtn = strip.querySelector('.btn-trim');
+    const trimLevels = [
+      { label: 'T', multiplier: 1, dbLabel: '' },
+      { label: '-6', multiplier: 0.5, dbLabel: '-6dB' },
+      { label: '-12', multiplier: 0.25, dbLabel: '-12dB' },
+      { label: '-20', multiplier: 0.1, dbLabel: '-20dB' },
+    ];
+    trimBtn.dataset.trimIndex = 0;
+
+    // Boost button — cycles through boost levels
     const boostBtn = strip.querySelector('.btn-boost');
     const boostLevels = [
-      { label: 'T', multiplier: 1, dbLabel: '', css: '' },
-      { label: '-20', multiplier: 0.1, dbLabel: '-20dB', css: 'cut' },
-      { label: '-12', multiplier: 0.25, dbLabel: '-12dB', css: 'cut' },
-      { label: '-6', multiplier: 0.5, dbLabel: '-6dB', css: 'cut' },
-      { label: '+6', multiplier: 2, dbLabel: '+6dB', css: 'boost' },
-      { label: '+12', multiplier: 4, dbLabel: '+12dB', css: 'boost' },
-      { label: '+20', multiplier: 10, dbLabel: '+20dB', css: 'boost' },
+      { label: 'B', multiplier: 1, dbLabel: '' },
+      { label: '+6', multiplier: 2, dbLabel: '+6dB' },
+      { label: '+12', multiplier: 4, dbLabel: '+12dB' },
+      { label: '+20', multiplier: 10, dbLabel: '+20dB' },
     ];
     boostBtn.dataset.boostIndex = 0;
+
+    trimBtn.addEventListener('click', () => {
+      let ti = (parseInt(trimBtn.dataset.trimIndex || 0) + 1) % trimLevels.length;
+      trimBtn.dataset.trimIndex = ti;
+      const level = trimLevels[ti];
+      trimBtn.textContent = level.label;
+      trimBtn.classList.toggle('active', ti > 0);
+      trimBtn.title = ti > 0 ? `Trim: ${level.dbLabel}` : 'Trim';
+      // If trim is active, reset boost
+      if (ti > 0) {
+        boostBtn.dataset.boostIndex = 0;
+        boostBtn.textContent = 'B';
+        boostBtn.classList.remove('active');
+        boostBtn.title = 'Boost';
+      }
+      Mixer.setBoost(index, level.multiplier);
+    });
+
     boostBtn.addEventListener('click', () => {
       let bi = (parseInt(boostBtn.dataset.boostIndex || 0) + 1) % boostLevels.length;
       boostBtn.dataset.boostIndex = bi;
       const level = boostLevels[bi];
       boostBtn.textContent = level.label;
-      boostBtn.classList.remove('active', 'cut');
-      if (level.css === 'boost') boostBtn.classList.add('active');
-      if (level.css === 'cut') boostBtn.classList.add('active', 'cut');
-      boostBtn.title = bi > 0 ? `Trim: ${level.dbLabel}` : 'Trim gain';
+      boostBtn.classList.toggle('active', bi > 0);
+      boostBtn.title = bi > 0 ? `Boost: ${level.dbLabel}` : 'Boost';
+      // If boost is active, reset trim
+      if (bi > 0) {
+        trimBtn.dataset.trimIndex = 0;
+        trimBtn.textContent = 'T';
+        trimBtn.classList.remove('active');
+        trimBtn.title = 'Trim';
+      }
       Mixer.setBoost(index, level.multiplier);
     });
 
@@ -194,28 +225,44 @@ const UI = (() => {
       const soloBtn = strip.querySelector('.btn-solo');
       soloBtn.classList.toggle('active', s.solo);
 
-      // Trim (boost/cut)
+      // Trim / Boost
+      const trimBtn = strip.querySelector('.btn-trim');
       const boostBtn = strip.querySelector('.btn-boost');
+      const trimLevels = [
+        { label: 'T', multiplier: 1 },
+        { label: '-6', multiplier: 0.5 },
+        { label: '-12', multiplier: 0.25 },
+        { label: '-20', multiplier: 0.1 },
+      ];
       const boostLevels = [
-        { label: 'T', multiplier: 1, css: '' },
-        { label: '-20', multiplier: 0.1, css: 'cut' },
-        { label: '-12', multiplier: 0.25, css: 'cut' },
-        { label: '-6', multiplier: 0.5, css: 'cut' },
-        { label: '+6', multiplier: 2, css: 'boost' },
-        { label: '+12', multiplier: 4, css: 'boost' },
-        { label: '+20', multiplier: 10, css: 'boost' },
+        { label: 'B', multiplier: 1 },
+        { label: '+6', multiplier: 2 },
+        { label: '+12', multiplier: 4 },
+        { label: '+20', multiplier: 10 },
       ];
       const boostMultiplier = s.boost || 1;
-      const bIdx = boostLevels.findIndex(l => l.multiplier === boostMultiplier);
-      boostBtn.classList.remove('active', 'cut');
-      if (bIdx > 0) {
-        boostBtn.textContent = boostLevels[bIdx].label;
-        if (boostLevels[bIdx].css === 'boost') boostBtn.classList.add('active');
-        if (boostLevels[bIdx].css === 'cut') boostBtn.classList.add('active', 'cut');
-      } else {
-        boostBtn.textContent = 'T';
+      // Reset both buttons
+      trimBtn.classList.remove('active');
+      trimBtn.textContent = 'T';
+      trimBtn.dataset.trimIndex = 0;
+      boostBtn.classList.remove('active');
+      boostBtn.textContent = 'B';
+      boostBtn.dataset.boostIndex = 0;
+      if (boostMultiplier < 1) {
+        const tIdx = trimLevels.findIndex(l => l.multiplier === boostMultiplier);
+        if (tIdx > 0) {
+          trimBtn.textContent = trimLevels[tIdx].label;
+          trimBtn.classList.add('active');
+          trimBtn.dataset.trimIndex = tIdx;
+        }
+      } else if (boostMultiplier > 1) {
+        const bIdx = boostLevels.findIndex(l => l.multiplier === boostMultiplier);
+        if (bIdx > 0) {
+          boostBtn.textContent = boostLevels[bIdx].label;
+          boostBtn.classList.add('active');
+          boostBtn.dataset.boostIndex = bIdx;
+        }
       }
-      boostBtn.dataset.boostIndex = bIdx >= 0 ? bIdx : 0;
       Mixer.setBoost(i, boostMultiplier);
 
       // Apply to audio engine

@@ -164,6 +164,62 @@
       margin-top: 12px;
     }
     .upload-results.hidden { display: none; }
+
+    /* Upload queue */
+    .upload-queue { margin-bottom: 16px; }
+    .upload-queue.hidden { display: none; }
+    .queue-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-strip);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+    }
+    .queue-item-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .queue-folder { font-weight: 600; color: var(--text-primary); }
+    .queue-count { font-size: 0.75rem; color: var(--text-secondary); }
+    .queue-size { font-size: 0.75rem; color: var(--text-secondary); }
+    .btn-queue-remove {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 0.7rem;
+      cursor: pointer;
+    }
+    .btn-queue-remove:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-upload-all {
+      flex: 1;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .btn-upload-all:hover { opacity: 0.9; }
+    .btn-upload-all.hidden { display: none; }
+    .btn-clear-queue {
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .btn-clear-queue:hover { border-color: var(--text-secondary); }
+    .btn-clear-queue.hidden { display: none; }
   </style>
 </head>
 <body>
@@ -192,12 +248,17 @@
     </div>
 
     <div class="upload-area" id="upload-area">
-      <p>Click to select session folders or drag &amp; drop</p>
-      <p class="upload-hint">Select one or more folders containing WAV files (e.g., 251213_000100/TRACK01.WAV)</p>
+      <p>Click to add a session folder</p>
+      <p class="upload-hint">Select folders containing WAV files (e.g., 251213_000100/TRACK01.WAV)</p>
       <input type="file" class="upload-file-input" id="upload-input" webkitdirectory multiple>
     </div>
 
-    <div id="upload-file-list"></div>
+    <div id="upload-queue" class="upload-queue hidden"></div>
+
+    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+      <button id="btn-upload-all" class="btn-upload-all hidden">Upload All</button>
+      <button id="btn-clear-queue" class="btn-clear-queue hidden">Clear Queue</button>
+    </div>
 
     <div class="upload-progress hidden" id="upload-progress">
       <div class="progress-bar-container">
@@ -294,14 +355,19 @@
 
     loadUsers();
 
-    // --- Upload functionality ---
+    // --- Upload functionality (queue-based) ---
     const uploadArea = document.getElementById('upload-area');
     const uploadInput = document.getElementById('upload-input');
     const uploadProgress = document.getElementById('upload-progress');
     const progressBar = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
     const uploadResults = document.getElementById('upload-results');
-    const uploadFileList = document.getElementById('upload-file-list');
+    const uploadQueue = document.getElementById('upload-queue');
+    const btnUploadAll = document.getElementById('btn-upload-all');
+    const btnClearQueue = document.getElementById('btn-clear-queue');
+
+    // Queue: array of { folder, files: [File, ...], totalSize }
+    let fileQueue = [];
 
     uploadArea.addEventListener('click', () => uploadInput.click());
 
@@ -317,12 +383,10 @@
     uploadArea.addEventListener('drop', (e) => {
       e.preventDefault();
       uploadArea.classList.remove('dragover');
-      // Drop doesn't work well with directories in most browsers,
-      // so just trigger the file picker
       uploadInput.click();
     });
 
-    uploadInput.addEventListener('change', async () => {
+    uploadInput.addEventListener('change', () => {
       const files = Array.from(uploadInput.files);
       if (files.length === 0) return;
 
@@ -330,16 +394,16 @@
       const wavFiles = files.filter(f => /\.wav$/i.test(f.name));
 
       if (wavFiles.length === 0) {
-        showMsg('No WAV files found in the selected folder(s).', 'error');
+        showMsg('No WAV files found in the selected folder.', 'error');
+        uploadInput.value = '';
         return;
       }
 
-      // Show what will be uploaded
+      // Group by session folder
       const folderMap = {};
       for (const f of wavFiles) {
-        const path = f.webkitRelativePath || f.name;
-        const parts = path.split('/');
-        // Find session folder
+        const filePath = f.webkitRelativePath || f.name;
+        const parts = filePath.split('/');
         let folder = 'Unknown';
         for (const p of parts) {
           if (/^\d{6}_\d{6}$/.test(p)) { folder = p; break; }
@@ -348,26 +412,96 @@
         folderMap[folder].push(f);
       }
 
-      const folderNames = Object.keys(folderMap);
-      const totalSize = wavFiles.reduce((sum, f) => sum + f.size, 0);
-      const sizeMB = (totalSize / 1024 / 1024).toFixed(0);
+      // Add each folder to the queue (skip duplicates)
+      let added = 0;
+      for (const [folder, files] of Object.entries(folderMap)) {
+        // Check if this folder is already queued
+        if (fileQueue.some(q => q.folder === folder)) {
+          showMsg(`"${folder}" is already in the queue.`, 'error');
+          continue;
+        }
+        const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+        fileQueue.push({ folder, files, totalSize });
+        added++;
+      }
 
-      if (!confirm(`Upload ${wavFiles.length} WAV files from ${folderNames.length} session(s)? (${sizeMB} MB total)\n\nSessions:\n${folderNames.join('\n')}`)) {
-        uploadInput.value = '';
+      if (added > 0) {
+        showMsg(`Added ${added} folder(s) to upload queue.`, 'success');
+      }
+
+      uploadInput.value = '';
+      renderQueue();
+    });
+
+    function renderQueue() {
+      if (fileQueue.length === 0) {
+        uploadQueue.classList.add('hidden');
+        btnUploadAll.classList.add('hidden');
+        btnClearQueue.classList.add('hidden');
+        uploadQueue.innerHTML = '';
         return;
       }
 
-      // Upload files one at a time to avoid memory issues
+      uploadQueue.classList.remove('hidden');
+      btnUploadAll.classList.remove('hidden');
+      btnClearQueue.classList.remove('hidden');
+
+      uploadQueue.innerHTML = fileQueue.map((q, idx) => {
+        const sizeMB = (q.totalSize / 1024 / 1024).toFixed(0);
+        return `
+          <div class="queue-item">
+            <div class="queue-item-info">
+              <span class="queue-folder">${q.folder}</span>
+              <span class="queue-count">${q.files.length} WAV files</span>
+              <span class="queue-size">${sizeMB} MB</span>
+            </div>
+            <button class="btn-queue-remove" data-idx="${idx}">Remove</button>
+          </div>
+        `;
+      }).join('');
+
+      // Wire up remove buttons
+      uploadQueue.querySelectorAll('.btn-queue-remove').forEach(btn => {
+        btn.addEventListener('click', () => {
+          fileQueue.splice(parseInt(btn.dataset.idx), 1);
+          renderQueue();
+        });
+      });
+    }
+
+    btnClearQueue.addEventListener('click', () => {
+      fileQueue = [];
+      renderQueue();
+    });
+
+    btnUploadAll.addEventListener('click', async () => {
+      if (fileQueue.length === 0) return;
+
+      const allFiles = fileQueue.flatMap(q => q.files);
+      const totalSize = fileQueue.reduce((sum, q) => sum + q.totalSize, 0);
+      const sizeMB = (totalSize / 1024 / 1024).toFixed(0);
+      const folderNames = fileQueue.map(q => q.folder);
+
+      if (!confirm(`Upload ${allFiles.length} WAV files from ${folderNames.length} session(s)? (${sizeMB} MB total)\n\nSessions:\n${folderNames.join('\n')}`)) {
+        return;
+      }
+
+      // Disable buttons during upload
+      btnUploadAll.disabled = true;
+      btnClearQueue.disabled = true;
+      uploadArea.style.pointerEvents = 'none';
+      uploadArea.style.opacity = '0.5';
+
       uploadProgress.classList.remove('hidden');
       uploadResults.classList.add('hidden');
       let uploaded = 0;
       let failed = 0;
 
-      for (let i = 0; i < wavFiles.length; i++) {
-        const file = wavFiles[i];
-        const percent = Math.round((i / wavFiles.length) * 100);
+      for (let i = 0; i < allFiles.length; i++) {
+        const file = allFiles[i];
+        const percent = Math.round((i / allFiles.length) * 100);
         progressBar.style.width = percent + '%';
-        progressText.textContent = `Uploading ${i + 1}/${wavFiles.length}: ${file.webkitRelativePath || file.name}`;
+        progressText.textContent = `Uploading ${i + 1}/${allFiles.length}: ${file.webkitRelativePath || file.name}`;
 
         const formData = new FormData();
         formData.append('files', file, file.webkitRelativePath || file.name);
@@ -400,7 +534,15 @@
         </div>
       `;
 
-      uploadInput.value = '';
+      // Clear queue
+      fileQueue = [];
+      renderQueue();
+
+      // Re-enable controls
+      btnUploadAll.disabled = false;
+      btnClearQueue.disabled = false;
+      uploadArea.style.pointerEvents = '';
+      uploadArea.style.opacity = '';
 
       // Hide progress after a moment
       setTimeout(() => {

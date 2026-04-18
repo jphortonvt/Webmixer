@@ -310,7 +310,7 @@ header h1 {
   justify-content: center;
 }
 
-.btn-mute, .btn-solo, .btn-boost {
+.btn-mute, .btn-solo, .btn-trim, .btn-boost {
   width: 32px;
   height: 24px;
   font-size: 0.65rem;
@@ -341,8 +341,9 @@ header h1 {
   border-color: #33aa66;
 }
 
-.btn-boost.active.cut {
+.btn-trim.active {
   background: #3388cc;
+  color: #fff;
   border-color: #3388cc;
 }
 
@@ -859,7 +860,7 @@ input[type="range"]::-webkit-slider-runnable-track {
     gap: 2px;
   }
 
-  .btn-mute, .btn-solo, .btn-boost {
+  .btn-mute, .btn-solo, .btn-trim, .btn-boost {
     width: 20px;
     height: 18px;
     font-size: 0.5rem;
