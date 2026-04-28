@@ -16,7 +16,7 @@ CACHE_DIR = os.path.join(BASE_DIR, 'cache')
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 FOLDER_PATTERN = re.compile(r'^\d{6}_\d{6}$')
 TRACK_PATTERN = re.compile(r'^TRACK\d+\.WAV$', re.IGNORECASE)
-ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'jphorton@gmail.com')
+ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
 
 os.makedirs(CACHE_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
