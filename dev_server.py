@@ -118,16 +118,16 @@ def transcode_session(session_id):
         dst_dir = os.path.join(CACHE_DIR, session_id)
         os.makedirs(dst_dir, exist_ok=True)
         for t in tracks:
-            ogg_name = re.sub(r'\.wav$', '.ogg', t, flags=re.IGNORECASE)
-            ogg_path = os.path.join(dst_dir, ogg_name)
-            if not os.path.exists(ogg_path):
+            mp3_name = re.sub(r'\.wav$', '.mp3', t, flags=re.IGNORECASE)
+            mp3_path = os.path.join(dst_dir, mp3_name)
+            if not os.path.exists(mp3_path):
                 wav_path = os.path.join(src_dir, t)
                 subprocess.run([
                     'ffmpeg', '-i', wav_path,
-                    '-c:a', 'libopus', '-b:a', '128k', '-y', ogg_path
+                    '-c:a', 'libmp3lame', '-b:a', '192k', '-y', mp3_path
                 ], capture_output=True)
-            if os.path.exists(ogg_path):
-                result.append({'name': t, 'url': f'/audio/{session_id}/{ogg_name}'})
+            if os.path.exists(mp3_path):
+                result.append({'name': t, 'url': f'/audio/{session_id}/{mp3_name}'})
             else:
                 result.append({'name': t, 'url': f'/audio/{session_id}/{t}'})
     else:
@@ -231,7 +231,7 @@ class MixerHandler(http.server.SimpleHTTPRequestHandler):
             if not os.path.isfile(file_path):
                 file_path = os.path.join(AUDIO_DIR, rel)
             if os.path.isfile(file_path):
-                content_type = 'audio/ogg' if file_path.endswith('.ogg') else 'audio/wav'
+                content_type = 'audio/mpeg' if file_path.endswith('.mp3') else 'audio/wav'
                 self.send_response(200)
                 self.send_header('Content-Type', content_type)
                 self.send_header('Content-Length', os.path.getsize(file_path))
