@@ -59,7 +59,9 @@ const Mixer = (() => {
         buffer: audioBuffer,
         sourceNode: null,
         gainNode,
-        panNode
+        panNode,
+        _baseVolume: 1,       // volume slider contribution (0–1.5)
+        _boostMultiplier: 1,  // trim/boost button contribution
       };
     });
 
@@ -157,7 +159,7 @@ const Mixer = (() => {
     if (tracks[trackIndex]) {
       const track = tracks[trackIndex];
       track._baseVolume = value;
-      track.gainNode.gain.value = value * (track._boostMultiplier || 1);
+      track.gainNode.gain.value = value * track._boostMultiplier;
     }
   }
 
@@ -165,8 +167,7 @@ const Mixer = (() => {
     if (tracks[trackIndex]) {
       const track = tracks[trackIndex];
       track._boostMultiplier = multiplier;
-      const base = track._baseVolume != null ? track._baseVolume : track.gainNode.gain.value;
-      track.gainNode.gain.value = base * multiplier;
+      track.gainNode.gain.value = track._baseVolume * multiplier;
     }
   }
 
