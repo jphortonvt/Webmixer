@@ -18,6 +18,14 @@ const Mixer = (() => {
     return audioCtx;
   }
 
+  // Call this synchronously inside a user gesture to unlock audio on iOS.
+  function unlock() {
+    const ctx = getContext();
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+  }
+
   async function loadTracks(trackList) {
     const ctx = getContext();
     // Resume context if suspended (browser autoplay policy)
@@ -35,7 +43,8 @@ const Mixer = (() => {
       const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
 
       const gainNode = ctx.createGain();
-      const panNode = ctx.createStereoPanner();
+      // createStereoPanner is unavailable on iOS Safari < 14.1 — fall back to a pass-through gain node
+      const panNode = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
 
       gainNode.connect(panNode);
       panNode.connect(ctx.destination);
@@ -169,7 +178,7 @@ const Mixer = (() => {
   }
 
   function setPan(trackIndex, value) {
-    if (tracks[trackIndex]) {
+    if (tracks[trackIndex] && tracks[trackIndex].panNode.pan) {
       tracks[trackIndex].panNode.pan.value = value;
     }
   }
@@ -221,6 +230,7 @@ const Mixer = (() => {
   }
 
   return {
+    unlock,
     loadTracks,
     play,
     pause,

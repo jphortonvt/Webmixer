@@ -67,8 +67,8 @@ ready.then(() => {
   // Serve cached audio files with proper headers
   app.use('/audio', ensureAuthenticated, express.static(CACHE_DIR, {
     setHeaders(res, filePath) {
-      if (filePath.endsWith('.m4a')) {
-        res.set('Content-Type', 'audio/mp4');
+      if (filePath.endsWith('.mp3')) {
+        res.set('Content-Type', 'audio/mpeg');
       }
     }
   }));

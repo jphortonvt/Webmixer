@@ -108,6 +108,10 @@
       return;
     }
 
+    // Unlock AudioContext now, while still inside the synchronous user gesture.
+    // iOS Safari requires this before any async work (fetch, etc.) breaks the gesture window.
+    Mixer.unlock();
+
     Mixer.stop();
     Transport.disable();
     UI.clearMixer();
