@@ -11,7 +11,7 @@
   <header>
     <h1>[Insert Band Name Here]</h1>
     <div class="header-right">
-      <div class="session-selector">
+      <div class="session-selector" id="session-selector-wrap">
         <label for="session-select">Session:</label>
         <select id="session-select" disabled>
           <option value="">Loading sessions...</option>
@@ -27,60 +27,93 @@
     </div>
   </header>
 
-  <div id="transport">
-    <button id="btn-play" disabled>&#9654; Play</button>
-    <button id="btn-pause" disabled>&#10074;&#10074; Pause</button>
-    <button id="btn-stop" disabled>&#9632; Stop</button>
-    <span id="time-display">00:00 / 00:00</span>
-    <div id="seek-container">
-      <input type="range" id="seek-bar" min="0" max="100" value="0" step="0.1" disabled>
-      <div id="comment-markers"></div>
-    </div>
+  <!-- Tab navigation -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="mixer">&#127906; Mixer</button>
+    <button class="tab-btn" data-tab="playlist">&#127925; Playlist</button>
   </div>
 
-  <div id="loading" class="hidden">
-    <div class="spinner"></div>
-    <span id="loading-text">Loading tracks...</span>
-  </div>
-
-  <div id="mixer">
-    <!-- Channel strips are dynamically inserted here -->
-  </div>
-
-  <div id="mix-actions" class="hidden">
-    <button id="btn-save-mix">Save Mix</button>
-    <span id="mix-status"></span>
-  </div>
-
-  <div id="mix-save-modal" class="modal-overlay hidden">
-    <div class="modal-content">
-      <h3>Save Mix Settings</h3>
-      <p>Save current settings for <strong id="mix-save-session-name"></strong></p>
-      <div class="modal-field">
-        <label for="mix-copy-from">Copy from a previous session:</label>
-        <select id="mix-copy-from">
-          <option value="">-- Don't copy, use current settings --</option>
-        </select>
-      </div>
-      <div class="modal-buttons">
-        <button id="btn-mix-save-confirm" class="btn-primary">Save</button>
-        <button id="btn-mix-save-cancel" class="btn-secondary">Cancel</button>
+  <!-- ===== MIXER TAB ===== -->
+  <div id="tab-mixer" class="tab-content">
+    <div id="transport">
+      <button id="btn-play" disabled>&#9654; Play</button>
+      <button id="btn-pause" disabled>&#10074;&#10074; Pause</button>
+      <button id="btn-stop" disabled>&#9632; Stop</button>
+      <span id="time-display">00:00 / 00:00</span>
+      <div id="seek-container">
+        <input type="range" id="seek-bar" min="0" max="100" value="0" step="0.1" disabled>
+        <div id="comment-markers"></div>
       </div>
     </div>
-  </div>
 
-  <div id="comments-panel" class="hidden">
-    <div class="comments-header">
-      <h3>Comments</h3>
+    <div id="loading" class="hidden">
+      <div class="spinner"></div>
+      <span id="loading-text">Loading tracks...</span>
     </div>
-    <div class="comment-input-area">
-      <div class="comment-input-row">
-        <span class="comment-time-badge" id="comment-time-badge">00:00</span>
-        <input type="text" id="comment-input" placeholder="Add a comment at current time...">
-        <button id="btn-post-comment">Post</button>
+
+    <div id="mixer">
+      <!-- Channel strips are dynamically inserted here -->
+    </div>
+
+    <div id="mix-actions" class="hidden">
+      <button id="btn-save-mix">Save Mix</button>
+      <span id="mix-status"></span>
+    </div>
+
+    <div id="mix-save-modal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <h3>Save Mix Settings</h3>
+        <p>Save current settings for <strong id="mix-save-session-name"></strong></p>
+        <div class="modal-field">
+          <label for="mix-copy-from">Copy from a previous session:</label>
+          <select id="mix-copy-from">
+            <option value="">-- Don't copy, use current settings --</option>
+          </select>
+        </div>
+        <div class="modal-buttons">
+          <button id="btn-mix-save-confirm" class="btn-primary">Save</button>
+          <button id="btn-mix-save-cancel" class="btn-secondary">Cancel</button>
+        </div>
       </div>
     </div>
-    <div id="comments-list"></div>
+
+    <div id="comments-panel" class="hidden">
+      <div class="comments-header">
+        <h3>Comments</h3>
+      </div>
+      <div class="comment-input-area">
+        <div class="comment-input-row">
+          <span class="comment-time-badge" id="comment-time-badge">00:00</span>
+          <input type="text" id="comment-input" placeholder="Add a comment at current time...">
+          <button id="btn-post-comment">Post</button>
+        </div>
+      </div>
+      <div id="comments-list"></div>
+    </div>
+  </div>
+
+  <!-- ===== PLAYLIST TAB ===== -->
+  <div id="tab-playlist" class="tab-content hidden">
+    <div class="playlist-wrap">
+
+      <div class="playlist-player">
+        <div class="now-playing-label">Now Playing</div>
+        <div id="now-playing">&#8212;</div>
+        <audio id="playlist-audio" controls preload="none"></audio>
+      </div>
+
+      <div class="playlist-section-header">
+        <h2>Songs</h2>
+        <span class="playlist-count" id="playlist-count"></span>
+      </div>
+
+      <div id="song-list" class="song-list"></div>
+
+      <div id="playlist-empty" class="playlist-empty hidden">
+        No songs have been added yet.<br>Ask an admin to upload some finished tracks.
+      </div>
+
+    </div>
   </div>
 
   <script src="/js/mixer.js"></script>
@@ -88,6 +121,7 @@
   <script src="/js/ui.js"></script>
   <script src="/js/comments.js"></script>
   <script src="/js/mixes.js"></script>
+  <script src="/js/playlist.js"></script>
   <script src="/js/auth.js"></script>
   <script src="/js/app.js"></script>
 </body>

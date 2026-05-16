@@ -268,6 +268,42 @@
     </div>
 
     <div class="upload-results hidden" id="upload-results"></div>
+
+    <hr class="section-divider">
+
+    <div class="admin-header">
+      <h2>Manage Songs</h2>
+    </div>
+
+    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 20px; line-height: 1.6;">
+      Upload finished MP3 tracks that appear in every user's Playlist tab.
+      Users can personalise the order, but you control which songs are available.
+    </p>
+
+    <!-- Song upload form -->
+    <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+      <input type="text" id="song-name-input" placeholder="Song display name..."
+        style="flex: 1; min-width: 180px; background: var(--bg-surface); color: var(--text-primary);
+               border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; font-size: 0.9rem;">
+      <button id="btn-pick-song"
+        style="background: var(--accent); color: #fff; border: none; border-radius: 6px;
+               padding: 10px 20px; font-size: 0.9rem; cursor: pointer; white-space: nowrap;">
+        Choose File
+      </button>
+      <input type="file" id="song-file-input" accept="audio/mpeg,audio/mp4,audio/wav,.mp3,.m4a,.wav" style="display:none">
+    </div>
+
+    <div id="song-msg" class="msg hidden"></div>
+
+    <div class="upload-progress hidden" id="song-progress">
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="song-progress-bar"></div>
+      </div>
+      <div class="progress-text" id="song-progress-text">Uploading...</div>
+    </div>
+
+    <ul class="user-list" id="song-list-admin" style="margin-top: 16px;"></ul>
+
   </div>
 
   <script>
@@ -594,6 +630,158 @@
         uploadProgress.classList.add('hidden');
       }, 2000);
     });
+
+    // --- Song management ---
+    const songNameInput = document.getElementById('song-name-input');
+    const btnPickSong = document.getElementById('btn-pick-song');
+    const songFileInput = document.getElementById('song-file-input');
+    const songMsgEl = document.getElementById('song-msg');
+    const songProgressEl = document.getElementById('song-progress');
+    const songProgressBar = document.getElementById('song-progress-bar');
+    const songProgressText = document.getElementById('song-progress-text');
+    const songListAdmin = document.getElementById('song-list-admin');
+
+    let pendingSongFile = null;
+
+    function showSongMsg(text, type) {
+      songMsgEl.textContent = text;
+      songMsgEl.className = 'msg ' + type;
+      setTimeout(() => { songMsgEl.className = 'msg hidden'; }, 5000);
+    }
+
+    btnPickSong.addEventListener('click', () => songFileInput.click());
+
+    songFileInput.addEventListener('change', () => {
+      const file = songFileInput.files[0];
+      if (!file) return;
+      pendingSongFile = file;
+
+      // Auto-fill name from filename if blank
+      if (!songNameInput.value.trim()) {
+        songNameInput.value = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+      }
+
+      btnPickSong.textContent = file.name.length > 24 ? file.name.slice(0, 22) + '...' : file.name;
+      uploadSong();
+    });
+
+    songNameInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && pendingSongFile) uploadSong();
+    });
+
+    async function uploadSong() {
+      const name = songNameInput.value.trim();
+      const file = pendingSongFile;
+
+      if (!name) { showSongMsg('Please enter a song name.', 'error'); return; }
+      if (!file)  { showSongMsg('Please choose an audio file.', 'error'); return; }
+
+      // Build a safe filename: name + original extension
+      const ext = (file.name.match(/\.[^.]+$/) || ['.mp3'])[0].toLowerCase();
+      const safeFilename = name.replace(/[^a-zA-Z0-9 _\-()]/g, '_') + ext;
+
+      btnPickSong.disabled = true;
+      songProgressEl.classList.remove('hidden');
+      songProgressBar.style.width = '10%';
+      songProgressText.textContent = 'Getting upload URL...';
+
+      try {
+        // Step 1: get a pre-signed URL from the server
+        const urlRes = await fetch('/api/admin/songs/upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: safeFilename, contentType: file.type || 'audio/mpeg' }),
+        });
+        if (!urlRes.ok) {
+          const err = await urlRes.json();
+          throw new Error(err.error || 'Failed to get upload URL');
+        }
+        const { url, filename: finalFilename } = await urlRes.json();
+
+        songProgressBar.style.width = '30%';
+        songProgressText.textContent = 'Uploading to storage...';
+
+        // Step 2: upload directly to B2
+        const putRes = await fetch(url, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type || 'audio/mpeg' },
+        });
+        if (!putRes.ok) throw new Error('Upload failed: HTTP ' + putRes.status);
+
+        songProgressBar.style.width = '80%';
+        songProgressText.textContent = 'Registering song...';
+
+        // Step 3: register in the database
+        const regRes = await fetch('/api/admin/songs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, filename: finalFilename }),
+        });
+        if (!regRes.ok) {
+          const err = await regRes.json();
+          throw new Error(err.error || 'Failed to register song');
+        }
+
+        songProgressBar.style.width = '100%';
+        songProgressText.textContent = 'Done!';
+        showSongMsg('Added: ' + name, 'success');
+
+        // Reset form
+        songNameInput.value = '';
+        btnPickSong.textContent = 'Choose File';
+        pendingSongFile = null;
+        songFileInput.value = '';
+
+        loadSongs();
+      } catch (err) {
+        showSongMsg(err.message, 'error');
+      } finally {
+        btnPickSong.disabled = false;
+        setTimeout(() => songProgressEl.classList.add('hidden'), 3000);
+      }
+    }
+
+    async function loadSongs() {
+      const res = await fetch('/api/songs');
+      if (!res.ok) return;
+      const songs = await res.json();
+
+      songListAdmin.innerHTML = '';
+      if (songs.length === 0) {
+        songListAdmin.innerHTML = '<li style="color: var(--text-secondary); font-size: 0.85rem; padding: 12px 0; list-style: none;">No songs yet.</li>';
+        return;
+      }
+
+      songs.forEach(s => {
+        const li = document.createElement('li');
+        li.className = 'user-item';
+        li.innerHTML =
+          '<div class="user-info">' +
+            '<div>' +
+              '<div class="user-email">' + s.name + '</div>' +
+              '<div class="user-name">' + s.filename + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<button class="btn-remove" data-id="' + s.id + '" data-name="' + s.name + '">Remove</button>';
+        songListAdmin.appendChild(li);
+
+        li.querySelector('.btn-remove').addEventListener('click', async (e) => {
+          const id = e.target.dataset.id;
+          const nm = e.target.dataset.name;
+          if (!confirm('Remove "' + nm + '"? It will disappear from all playlists.')) return;
+          const r = await fetch('/api/admin/songs/' + id, { method: 'DELETE' });
+          if (r.ok) {
+            showSongMsg('Removed: ' + nm, 'success');
+            loadSongs();
+          } else {
+            showSongMsg('Failed to remove song.', 'error');
+          }
+        });
+      });
+    }
+
+    loadSongs();
   </script>
 </body>
 </html>

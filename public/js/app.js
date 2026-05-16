@@ -13,6 +13,32 @@
   Transport.init();
   Comments.init();
   Mixes.init();
+  Playlist.init();
+
+  // Tab switching
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+  const sessionSelectorWrap = document.getElementById('session-selector-wrap');
+  let playlistLoaded = false;
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab;
+      tabBtns.forEach(b => b.classList.toggle('active', b === btn));
+      tabContents.forEach(c => c.classList.toggle('hidden', c.id !== 'tab-' + target));
+
+      // Show/hide session selector — only relevant in mixer tab
+      if (sessionSelectorWrap) {
+        sessionSelectorWrap.style.display = target === 'mixer' ? '' : 'none';
+      }
+
+      // Lazy-load playlist on first visit
+      if (target === 'playlist' && !playlistLoaded) {
+        playlistLoaded = true;
+        Playlist.load();
+      }
+    });
+  });
 
   function showLoading(msg) {
     loadingText.textContent = msg;
