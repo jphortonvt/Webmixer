@@ -96,6 +96,7 @@
 
   // Handle session selection
   sessionSelect.addEventListener('change', async () => {
+    Mixer.unlockAudio(); // Must be synchronous before any awaits — required for iOS Safari
     const sessionId = sessionSelect.value;
     editNameBtn.classList.toggle('hidden', !sessionId);
     if (!sessionId) {

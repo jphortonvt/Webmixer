@@ -211,6 +211,15 @@ const Mixer = (() => {
     onPlaybackEnd = cb;
   }
 
+  // iOS Safari requires AudioContext to be created/resumed within a user gesture.
+  // Call this synchronously in any event handler where audio will follow.
+  function unlockAudio() {
+    const ctx = getContext();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+  }
+
   return {
     loadTracks,
     play,
@@ -225,6 +234,7 @@ const Mixer = (() => {
     getDuration,
     getIsPlaying,
     setOnTimeUpdate,
-    setOnPlaybackEnd
+    setOnPlaybackEnd,
+    unlockAudio
   };
 })();

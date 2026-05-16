@@ -69,7 +69,7 @@ router.get('/sessions/:id/tracks', ensureAuthenticated, async (req, res) => {
       // All tracks cached — return immediately
       const tracks = trackFiles.map(f => ({
         name: f,
-        url: `/audio/${sessionId}/${f.replace(/\.wav$/i, '.ogg')}`
+        url: `/audio/${sessionId}/${f.replace(/\.wav$/i, '.m4a')}`
       }));
       return res.json({ sessionId, tracks });
     }

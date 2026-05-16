@@ -43,6 +43,7 @@ const Transport = (() => {
     });
 
     btnPlay.addEventListener('click', () => {
+      Mixer.unlockAudio(); // iOS Safari requires resume() inside a user gesture
       Mixer.play();
     });
 
