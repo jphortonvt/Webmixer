@@ -46,7 +46,7 @@ const Mixer = (() => {
       // createStereoPanner is unavailable on iOS Safari < 14.1 — fall back to a pass-through gain node
       const panNode = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
       const analyserNode = ctx.createAnalyser();
-      analyserNode.fftSize = 32;
+      analyserNode.fftSize = 256;
 
       gainNode.connect(panNode);
       panNode.connect(analyserNode);
@@ -224,13 +224,14 @@ const Mixer = (() => {
   function getTrackLevels() {
     return tracks.map(t => {
       if (!t.analyserNode || !isPlaying) return 0;
-      const array = new Uint8Array(t.analyserNode.frequencyBinCount);
-      t.analyserNode.getByteFrequencyData(array);
-      let max = 0;
+      const array = new Uint8Array(t.analyserNode.fftSize);
+      t.analyserNode.getByteTimeDomainData(array);
+      let maxDev = 0;
       for (let i = 0; i < array.length; i++) {
-        if (array[i] > max) max = array[i];
+        const dev = Math.abs(array[i] - 128);
+        if (dev > maxDev) maxDev = dev;
       }
-      return max / 255;
+      return maxDev / 128;
     });
   }
 

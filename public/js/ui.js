@@ -406,3 +406,5 @@ const UI = (() => {
 
   return { renderTracks, clearMixer, getSettings, applySettings, startVuLoop, stopVuLoop };
 })();
+
+window.UI = UI;
