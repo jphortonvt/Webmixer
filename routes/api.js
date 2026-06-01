@@ -101,4 +101,47 @@ router.get('/sessions/:id/tracks', ensureAuthenticated, async (req, res) => {
   }
 });
 
+// GET track icons for a session
+router.get('/sessions/:id/icons', ensureAuthenticated, (req, res) => {
+  const sessionId = req.params.id;
+  const db = getDb();
+  try {
+    const rows = db.prepare('SELECT track_name, icon FROM track_icons WHERE session_id = ?').all(sessionId);
+    const icons = {};
+    for (const r of rows) {
+      icons[r.track_name] = r.icon;
+    }
+    res.json(icons);
+  } catch (err) {
+    console.error('Error fetching track icons:', err);
+    res.status(500).json({ error: 'Failed to fetch track icons' });
+  }
+});
+
+// PUT (upsert) track icon for a session
+router.put('/sessions/:id/icons', ensureAuthenticated, (req, res) => {
+  const sessionId = req.params.id;
+  const { track_name, icon } = req.body;
+
+  if (!track_name || !icon) {
+    return res.status(400).json({ error: 'track_name and icon required' });
+  }
+
+  const db = getDb();
+  try {
+    const existing = db.prepare('SELECT 1 FROM track_icons WHERE session_id = ? AND track_name = ?').get(sessionId, track_name);
+    if (existing) {
+      db.prepare('UPDATE track_icons SET icon = ?, updated_at = datetime(\'now\') WHERE session_id = ? AND track_name = ?')
+        .run(icon, sessionId, track_name);
+    } else {
+      db.prepare('INSERT INTO track_icons (session_id, track_name, icon) VALUES (?, ?, ?)')
+        .run(sessionId, track_name, icon);
+    }
+    res.json({ message: 'Icon saved', track_name, icon });
+  } catch (err) {
+    console.error('Error saving track icon:', err);
+    res.status(500).json({ error: 'Failed to save track icon' });
+  }
+});
+
 module.exports = router;

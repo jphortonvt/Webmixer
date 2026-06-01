@@ -60,6 +60,13 @@ db.executescript('''
     UNIQUE(user_id, session_id)
   );
   CREATE INDEX IF NOT EXISTS idx_mix_presets_user_session ON mix_presets(user_id, session_id);
+  CREATE TABLE IF NOT EXISTS track_icons (
+    session_id TEXT NOT NULL,
+    track_name TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (session_id, track_name)
+  );
 ''')
 
 # Seed admin
@@ -210,6 +217,16 @@ class MixerHandler(http.server.SimpleHTTPRequestHandler):
         elif path.startswith('/api/sessions/') and path.endswith('/comments'):
             session_id = path.split('/')[3]
             self.send_json(get_comments(session_id))
+        elif path.startswith('/api/sessions/') and path.endswith('/icons'):
+            session_id = path.split('/')[3]
+            if '..' in session_id:
+                self.send_error(400)
+                return
+            rows = db.execute(
+                'SELECT track_name, icon FROM track_icons WHERE session_id=?',
+                (session_id,)
+            ).fetchall()
+            self.send_json({r['track_name']: r['icon'] for r in rows})
         elif path == '/api/mixes':
             rows = db.execute(
                 'SELECT session_id, updated_at, created_at FROM mix_presets WHERE user_id=? ORDER BY COALESCE(updated_at, created_at) DESC',
@@ -243,6 +260,9 @@ class MixerHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(404)
         else:
             super().do_GET()
+
+    def do_PUT(self):
+        self.do_POST()
 
     def do_POST(self):
         parsed = urlparse(self.path)
@@ -290,6 +310,32 @@ class MixerHandler(http.server.SimpleHTTPRequestHandler):
                 'settings': json.loads(final_settings),
                 'message': 'Mix saved'
             })
+        elif path.startswith('/api/sessions/') and path.endswith('/icons'):
+            session_id = path.split('/')[3]
+            if '..' in session_id:
+                self.send_json({'error': 'Invalid session'}, 400)
+                return
+            track_name = body.get('track_name')
+            icon = body.get('icon')
+            if not track_name or not icon:
+                self.send_json({'error': 'track_name and icon required'}, 400)
+                return
+            existing = db.execute(
+                'SELECT 1 FROM track_icons WHERE session_id=? AND track_name=?',
+                (session_id, track_name)
+            ).fetchone()
+            if existing:
+                db.execute(
+                    "UPDATE track_icons SET icon=?, updated_at=datetime('now') WHERE session_id=? AND track_name=?",
+                    (icon, session_id, track_name)
+                )
+            else:
+                db.execute(
+                    'INSERT INTO track_icons (session_id, track_name, icon) VALUES (?,?,?)',
+                    (session_id, track_name, icon)
+                )
+            db.commit()
+            self.send_json({'message': 'Icon saved', 'track_name': track_name, 'icon': icon})
         elif path.startswith('/api/sessions/') and path.endswith('/comments'):
             session_id = path.split('/')[3]
             ts = body.get('timestamp_seconds', 0)

@@ -248,10 +248,113 @@ const Playlist = (() => {
 
     if (!audioEl || !songListEl) return;
 
+    const playPauseBtn = document.getElementById('btn-playlist-play-pause');
+    const prevBtn = document.getElementById('btn-playlist-prev');
+    const nextBtn = document.getElementById('btn-playlist-next');
+    const timeDisplay = document.getElementById('playlist-time-display');
+    const seekBar = document.getElementById('playlist-seek-bar');
+
+    // Update play/pause button text on play event
+    audioEl.addEventListener('play', () => {
+      if (playPauseBtn) playPauseBtn.innerHTML = '&#10074;&#10074; Pause';
+    });
+
+    audioEl.addEventListener('pause', () => {
+      if (playPauseBtn) playPauseBtn.innerHTML = '&#9654; Play';
+    });
+
+    // Handle play/pause toggle click
+    if (playPauseBtn) {
+      playPauseBtn.addEventListener('click', () => {
+        if (currentIdx === -1 && songs.length > 0) {
+          playSong(0);
+        } else if (audioEl.src) {
+          if (audioEl.paused) {
+            audioEl.play().catch(() => {});
+          } else {
+            audioEl.pause();
+          }
+        }
+      });
+    }
+
+    // Previous track
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        if (currentIdx > 0) {
+          playSong(currentIdx - 1);
+        }
+      });
+    }
+
+    // Next track
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        if (currentIdx >= 0 && currentIdx + 1 < songs.length) {
+          playSong(currentIdx + 1);
+        }
+      });
+    }
+
+    // Enable seek bar and set duration
+    audioEl.addEventListener('loadedmetadata', () => {
+      if (seekBar) {
+        seekBar.disabled = false;
+        seekBar.max = audioEl.duration;
+      }
+      updatePlaylistTimeDisplay();
+    });
+
+    // Progress updating
+    audioEl.addEventListener('timeupdate', () => {
+      if (seekBar && !seekBar._isUserDragging) {
+        seekBar.value = audioEl.currentTime;
+      }
+      updatePlaylistTimeDisplay();
+    });
+
+    // Handle user interaction with seek bar
+    if (seekBar) {
+      seekBar.addEventListener('mousedown', () => {
+        seekBar._isUserDragging = true;
+      });
+      seekBar.addEventListener('mouseup', () => {
+        seekBar._isUserDragging = false;
+        audioEl.currentTime = parseFloat(seekBar.value);
+      });
+      seekBar.addEventListener('touchstart', () => {
+        seekBar._isUserDragging = true;
+      });
+      seekBar.addEventListener('touchend', () => {
+        seekBar._isUserDragging = false;
+        audioEl.currentTime = parseFloat(seekBar.value);
+      });
+      seekBar.addEventListener('input', () => {
+        updatePlaylistTimeDisplay(parseFloat(seekBar.value));
+      });
+    }
+
+    function updatePlaylistTimeDisplay(currentVal) {
+      if (!timeDisplay) return;
+      const cur = currentVal !== undefined ? currentVal : (audioEl.currentTime || 0);
+      const dur = audioEl.duration || 0;
+      timeDisplay.textContent = `${formatTime(cur)} / ${formatTime(dur)}`;
+    }
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
     // Auto-advance to the next song when current one ends
     audioEl.addEventListener('ended', () => {
       if (currentIdx >= 0 && currentIdx + 1 < songs.length) {
         playSong(currentIdx + 1);
+      } else {
+        if (playPauseBtn) playPauseBtn.innerHTML = '&#9654; Play';
+        if (seekBar) seekBar.value = 0;
+        updatePlaylistTimeDisplay(0);
       }
     });
   }

@@ -29,8 +29,8 @@
 
   <!-- Tab navigation -->
   <div class="tab-bar">
-    <button class="tab-btn active" data-tab="mixer">&#127906; Mixer</button>
-    <button class="tab-btn" data-tab="playlist">&#127925; Playlist</button>
+    <button class="tab-btn active" data-tab="mixer">Mixer</button>
+    <button class="tab-btn" data-tab="playlist">Playlist</button>
   </div>
 
   <!-- ===== MIXER TAB ===== -->
@@ -99,7 +99,18 @@
       <div class="playlist-player">
         <div class="now-playing-label">Now Playing</div>
         <div id="now-playing">&#8212;</div>
-        <audio id="playlist-audio" controls preload="none"></audio>
+        <audio id="playlist-audio" preload="none"></audio>
+        <div class="playlist-controls">
+          <div class="playlist-btn-row">
+            <button id="btn-playlist-prev" class="btn-ctrl" title="Previous">&#9194;</button>
+            <button id="btn-playlist-play-pause" class="btn-ctrl" title="Play/Pause">&#9654; Play</button>
+            <button id="btn-playlist-next" class="btn-ctrl" title="Next">&#9193;</button>
+          </div>
+          <div class="playlist-progress-row">
+            <span id="playlist-time-display" class="time-display">00:00 / 00:00</span>
+            <input type="range" id="playlist-seek-bar" min="0" max="100" value="0" step="0.1" disabled>
+          </div>
+        </div>
       </div>
 
       <div class="playlist-section-header">

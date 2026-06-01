@@ -7,16 +7,18 @@ const UI = (() => {
     mixerEl.innerHTML = '';
   }
 
-  function createChannelStrip(index, trackName) {
+  function createChannelStrip(index, trackName, sessionId, savedIcon) {
     const strip = document.createElement('div');
     strip.className = 'channel-strip';
 
     // Extract track number from filename
     const numMatch = trackName.match(/(\d+)/);
     const trackNum = numMatch ? numMatch[1] : index + 1;
+    const activeIcon = savedIcon || '🎵';
 
     strip.innerHTML = `
       <div class="track-number">${trackNum}</div>
+      <button class="btn-track-icon" data-index="${index}" title="Set Track Category">${activeIcon}</button>
       <div class="track-name">${trackName}</div>
       <div class="channel-buttons">
         <button class="btn-mute" data-index="${index}">M</button>
@@ -143,6 +145,16 @@ const UI = (() => {
       Mixer.setBoost(index, level.multiplier);
     });
 
+    // Track icon button click
+    const iconBtn = strip.querySelector('.btn-track-icon');
+    iconBtn.addEventListener('click', () => {
+      if (!sessionId) {
+        alert('Please select a session first.');
+        return;
+      }
+      showIconPopover(iconBtn, trackName, index, sessionId);
+    });
+
     return strip;
   }
 
@@ -178,12 +190,91 @@ const UI = (() => {
     }
   }
 
-  function renderTracks(trackList) {
+  async function renderTracks(trackList, sessionId) {
     clearMixer();
+
+    let savedIcons = {};
+    if (sessionId) {
+      try {
+        const res = await fetch(`/api/sessions/${sessionId}/icons`);
+        if (res.ok) {
+          savedIcons = await res.json();
+        }
+      } catch (err) {
+        console.error('Failed to load track icons:', err);
+      }
+    }
+
     trackList.forEach((track, index) => {
-      const strip = createChannelStrip(index, track.name);
+      const strip = createChannelStrip(index, track.name, sessionId, savedIcons[track.name]);
       mixerEl.appendChild(strip);
     });
+  }
+
+  function showIconPopover(buttonEl, trackName, index, sessionId) {
+    // Remove any existing track-icon-popovers
+    const existing = document.querySelector('.track-icon-popover');
+    if (existing) {
+      existing.remove();
+    }
+
+    const popover = document.createElement('div');
+    popover.className = 'track-icon-popover';
+    
+    const icons = [
+      { char: '🎸', label: 'Guitar' },
+      { char: '🔊', label: 'Bass' },
+      { char: '🎹', label: 'Keyboard' },
+      { char: '🥁', label: 'Drums' },
+      { char: '🎤', label: 'Vocals' },
+      { char: '🎵', label: 'Default' }
+    ];
+
+    icons.forEach(item => {
+      const btn = document.createElement('button');
+      btn.className = 'popover-icon-btn';
+      btn.textContent = item.char;
+      btn.title = item.label;
+      btn.addEventListener('click', async () => {
+        // Save to backend
+        try {
+          const res = await fetch(`/api/sessions/${sessionId}/icons`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ track_name: trackName, icon: item.char })
+          });
+          if (res.ok) {
+            buttonEl.textContent = item.char;
+          } else {
+            console.error('Failed to save track icon');
+          }
+        } catch (err) {
+          console.error('Error saving track icon:', err);
+        }
+        popover.remove();
+      });
+      popover.appendChild(btn);
+    });
+
+    document.body.appendChild(popover);
+
+    // Position the popover near the button
+    const rect = buttonEl.getBoundingClientRect();
+    popover.style.position = 'absolute';
+    popover.style.top = `${rect.bottom + window.scrollY + 5}px`;
+    popover.style.left = `${rect.left + window.scrollX}px`;
+
+    // Close popover when clicking outside
+    const outsideClick = (e) => {
+      if (!popover.contains(e.target) && e.target !== buttonEl) {
+        popover.remove();
+        document.removeEventListener('click', outsideClick);
+      }
+    };
+    // Delay adding the event listener to avoid immediate triggering from this click
+    setTimeout(() => {
+      document.addEventListener('click', outsideClick);
+    }, 0);
   }
 
   function getSettings() {

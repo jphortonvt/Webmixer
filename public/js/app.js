@@ -171,7 +171,7 @@
       await Mixer.loadTracks(data.tracks);
 
       // Render channel strips
-      UI.renderTracks(data.tracks);
+      UI.renderTracks(data.tracks, sessionId);
 
       // Enable transport
       Transport.enable();
