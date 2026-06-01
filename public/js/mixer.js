@@ -45,9 +45,12 @@ const Mixer = (() => {
       const gainNode = ctx.createGain();
       // createStereoPanner is unavailable on iOS Safari < 14.1 — fall back to a pass-through gain node
       const panNode = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
+      const analyserNode = ctx.createAnalyser();
+      analyserNode.fftSize = 32;
 
       gainNode.connect(panNode);
-      panNode.connect(ctx.destination);
+      panNode.connect(analyserNode);
+      analyserNode.connect(ctx.destination);
 
       if (audioBuffer.duration > duration) {
         duration = audioBuffer.duration;
@@ -60,6 +63,7 @@ const Mixer = (() => {
         sourceNode: null,
         gainNode,
         panNode,
+        analyserNode,
         _baseVolume: 1,       // volume slider contribution (0–1.5)
         _boostMultiplier: 1,  // trim/boost button contribution
       };
@@ -108,11 +112,13 @@ const Mixer = (() => {
         isPlaying = false;
         pauseOffset = 0;
         clearInterval(animFrameId); animFrameId = null;
+        if (window.UI) window.UI.stopVuLoop();
         if (onPlaybackEnd) onPlaybackEnd();
       }
     };
 
     startTimeUpdate();
+    if (window.UI) window.UI.startVuLoop();
   }
 
   function pause() {
@@ -123,6 +129,7 @@ const Mixer = (() => {
     stopSources();
     isPlaying = false;
     clearInterval(animFrameId); animFrameId = null;
+    if (window.UI) window.UI.stopVuLoop();
   }
 
   function stop() {
@@ -130,6 +137,7 @@ const Mixer = (() => {
     isPlaying = false;
     pauseOffset = 0;
     clearInterval(animFrameId); animFrameId = null;
+    if (window.UI) window.UI.stopVuLoop();
     if (onTimeUpdate) onTimeUpdate(0, duration);
   }
 
@@ -213,6 +221,19 @@ const Mixer = (() => {
     return isPlaying;
   }
 
+  function getTrackLevels() {
+    return tracks.map(t => {
+      if (!t.analyserNode || !isPlaying) return 0;
+      const array = new Uint8Array(t.analyserNode.frequencyBinCount);
+      t.analyserNode.getByteFrequencyData(array);
+      let max = 0;
+      for (let i = 0; i < array.length; i++) {
+        if (array[i] > max) max = array[i];
+      }
+      return max / 255;
+    });
+  }
+
   function setOnTimeUpdate(cb) {
     onTimeUpdate = cb;
   }
@@ -244,6 +265,7 @@ const Mixer = (() => {
     getCurrentTime,
     getDuration,
     getIsPlaying,
+    getTrackLevels,
     setOnTimeUpdate,
     setOnPlaybackEnd,
     unlockAudio

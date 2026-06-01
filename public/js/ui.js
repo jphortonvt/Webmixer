@@ -1,6 +1,7 @@
 // Channel strip UI generation and wiring
 const UI = (() => {
   const mixerEl = document.getElementById('mixer');
+  let activeRenderLoop = false;
 
   function clearMixer() {
     mixerEl.innerHTML = '';
@@ -25,8 +26,13 @@ const UI = (() => {
       </div>
       <div class="volume-container">
         <label>Vol</label>
-        <input type="range" class="volume-slider" data-index="${index}"
-               min="0" max="150" value="100" orient="vertical">
+        <div class="fader-row">
+          <input type="range" class="volume-slider" data-index="${index}"
+                 min="0" max="150" value="100" orient="vertical">
+          <div class="vu-meter-container">
+            <div class="vu-meter-bar" id="vu-bar-${index}"></div>
+          </div>
+        </div>
         <span class="volume-value">100%</span>
       </div>
       <div class="pan-container">
@@ -278,5 +284,34 @@ const UI = (() => {
     applySolo();
   }
 
-  return { renderTracks, clearMixer, getSettings, applySettings };
+  function startVuLoop() {
+    if (activeRenderLoop) return;
+    activeRenderLoop = true;
+
+    function update() {
+      if (!activeRenderLoop) return;
+
+      const levels = Mixer.getTrackLevels();
+      levels.forEach((level, i) => {
+        const bar = document.getElementById(`vu-bar-${i}`);
+        if (bar) {
+          bar.style.transform = `scaleY(${level})`;
+        }
+      });
+
+      requestAnimationFrame(update);
+    }
+
+    requestAnimationFrame(update);
+  }
+
+  function stopVuLoop() {
+    activeRenderLoop = false;
+    const bars = mixerEl.querySelectorAll('.vu-meter-bar');
+    bars.forEach(bar => {
+      bar.style.transform = 'scaleY(0)';
+    });
+  }
+
+  return { renderTracks, clearMixer, getSettings, applySettings, startVuLoop, stopVuLoop };
 })();
