@@ -8,7 +8,6 @@ import subprocess
 import socketserver
 from urllib.parse import urlparse
 from datetime import datetime
-from concurrent.futures import ThreadPoolExecutor
 
 PORT = int(os.environ.get('PORT', 3000))
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -117,41 +116,28 @@ def has_ffmpeg():
 _ffmpeg_available = has_ffmpeg()
 
 
-def transcode_track(src_dir, dst_dir, session_id, t):
-    mp3_name = re.sub(r'\.wav$', '.mp3', t, flags=re.IGNORECASE)
-    mp3_path = os.path.join(dst_dir, mp3_name)
-    try:
-        if not os.path.exists(mp3_path):
-            wav_path = os.path.join(src_dir, t)
-            print(f"  [DEV] Transcoding {t} to MP3...")
-            subprocess.run([
-                'ffmpeg', '-i', wav_path,
-                '-c:a', 'libmp3lame', '-b:a', '192k', '-y', mp3_path
-            ], capture_output=True, check=True)
-        if os.path.exists(mp3_path):
-            return {'name': t, 'url': f'/audio/{session_id}/{mp3_name}'}
-    except Exception as e:
-        print(f"  [DEV ERROR] Failed to transcode {t}: {e}")
-    
-    # Fallback to serving the original WAV directly
-    return {'name': t, 'url': f'/audio/{session_id}/{t}'}
-
-
 def transcode_session(session_id):
     src_dir = os.path.join(AUDIO_DIR, session_id)
     tracks = sorted(f for f in os.listdir(src_dir) if TRACK_PATTERN.match(f))
+    result = []
 
     if _ffmpeg_available:
         dst_dir = os.path.join(CACHE_DIR, session_id)
         os.makedirs(dst_dir, exist_ok=True)
-        
-        # Transcode in parallel using ThreadPoolExecutor with up to 4 concurrent worker threads.
-        # Spawning external subprocesses (ffmpeg) releases Python's GIL.
-        with ThreadPoolExecutor(max_workers=4) as executor:
-            futures = [executor.submit(transcode_track, src_dir, dst_dir, session_id, t) for t in tracks]
-            result = [future.result() for future in futures]
+        for t in tracks:
+            mp3_name = re.sub(r'\.wav$', '.mp3', t, flags=re.IGNORECASE)
+            mp3_path = os.path.join(dst_dir, mp3_name)
+            if not os.path.exists(mp3_path):
+                wav_path = os.path.join(src_dir, t)
+                subprocess.run([
+                    'ffmpeg', '-i', wav_path,
+                    '-c:a', 'libmp3lame', '-b:a', '192k', '-y', mp3_path
+                ], capture_output=True)
+            if os.path.exists(mp3_path):
+                result.append({'name': t, 'url': f'/audio/{session_id}/{mp3_name}'})
+            else:
+                result.append({'name': t, 'url': f'/audio/{session_id}/{t}'})
     else:
-        result = []
         for t in tracks:
             result.append({'name': t, 'url': f'/audio/{session_id}/{t}'})
 
