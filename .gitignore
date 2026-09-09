@@ -4,3 +4,4 @@ data/
 raw_audio/
 .env
 .DS_Store
+songs-cache/
