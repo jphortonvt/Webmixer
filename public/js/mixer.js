@@ -1,15 +1,22 @@
-// Web Audio API engine for synchronized multitrack playback
+// Web Audio API engine for synchronized multitrack playback.
+// Tracks stream through <audio> elements (MediaElementAudioSourceNode) rather
+// than being decoded into AudioBuffers — keeps memory flat on mobile, where
+// fully-decoded PCM for a session can exceed what iOS Safari allows a tab.
 const Mixer = (() => {
   let audioCtx = null;
-  let tracks = []; // { buffer, sourceNode, gainNode, panNode, name, url }
+  let tracks = []; // { el, sourceNode, gainNode, panNode, analyserNode, name, url }
   let isPlaying = false;
-  let startTime = 0;
-  let pauseOffset = 0;
   let duration = 0;
+  let masterIndex = -1; // index of the longest track; drives time/ended events
   let onTimeUpdate = null;
   let onPlaybackEnd = null;
-  let animFrameId = null;
-  let playGeneration = 0; // guards against stale onended callbacks
+  let timeUpdateId = null;
+  let driftCheckId = null;
+  let wakeLock = null;
+
+  // Elements are allowed to drift this far (seconds) from the master before
+  // being snapped back into sync.
+  const DRIFT_TOLERANCE = 0.06;
 
   function getContext() {
     if (!audioCtx) {
@@ -26,41 +33,66 @@ const Mixer = (() => {
     }
   }
 
+  function disposeTracks() {
+    for (const t of tracks) {
+      try { t.el.pause(); } catch (e) {}
+      t.el.removeAttribute('src');
+      t.el.load();
+      try { t.sourceNode.disconnect(); } catch (e) {}
+      try { t.gainNode.disconnect(); } catch (e) {}
+      try { t.panNode.disconnect(); } catch (e) {}
+      try { t.analyserNode.disconnect(); } catch (e) {}
+    }
+    tracks = [];
+    masterIndex = -1;
+    duration = 0;
+  }
+
+  function waitForMetadata(el, name) {
+    return new Promise((resolve, reject) => {
+      if (el.readyState >= 1) return resolve(); // HAVE_METADATA
+      const onMeta = () => { cleanup(); resolve(); };
+      const onErr = () => { cleanup(); reject(new Error(`Failed to load ${name}`)); };
+      const cleanup = () => {
+        el.removeEventListener('loadedmetadata', onMeta);
+        el.removeEventListener('error', onErr);
+      };
+      el.addEventListener('loadedmetadata', onMeta);
+      el.addEventListener('error', onErr);
+    });
+  }
+
   async function loadTracks(trackList) {
     const ctx = getContext();
-    // Resume context if suspended (browser autoplay policy)
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
 
-    stop(); // Reset any current playback
-    tracks = [];
-    duration = 0;
+    stop();
+    disposeTracks();
 
-    const loadPromises = trackList.map(async (t) => {
-      const response = await fetch(t.url);
-      const arrayBuffer = await response.arrayBuffer();
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    tracks = trackList.map((t) => {
+      const el = new Audio();
+      el.preload = 'auto';
+      el.src = t.url;
 
+      const sourceNode = ctx.createMediaElementSource(el);
       const gainNode = ctx.createGain();
       // createStereoPanner is unavailable on iOS Safari < 14.1 — fall back to a pass-through gain node
       const panNode = ctx.createStereoPanner ? ctx.createStereoPanner() : ctx.createGain();
       const analyserNode = ctx.createAnalyser();
       analyserNode.fftSize = 256;
 
+      sourceNode.connect(gainNode);
       gainNode.connect(panNode);
       panNode.connect(analyserNode);
       analyserNode.connect(ctx.destination);
 
-      if (audioBuffer.duration > duration) {
-        duration = audioBuffer.duration;
-      }
-
       return {
         name: t.name,
         url: t.url,
-        buffer: audioBuffer,
-        sourceNode: null,
+        el,
+        sourceNode,
         gainNode,
         panNode,
         analyserNode,
@@ -69,18 +101,35 @@ const Mixer = (() => {
       };
     });
 
-    tracks = await Promise.all(loadPromises);
+    await Promise.all(tracks.map(t => waitForMetadata(t.el, t.name)));
+
+    duration = 0;
+    tracks.forEach((t, i) => {
+      if (t.el.duration > duration) {
+        duration = t.el.duration;
+        masterIndex = i;
+      }
+    });
+
+    // Playback-end fires on the longest track
+    if (masterIndex >= 0) {
+      tracks[masterIndex].el.addEventListener('ended', handleMasterEnded);
+    }
+
     return tracks.length;
   }
 
-  function createSourceNodes(offset) {
-    const ctx = getContext();
-    for (const track of tracks) {
-      const source = ctx.createBufferSource();
-      source.buffer = track.buffer;
-      source.connect(track.gainNode);
-      track.sourceNode = source;
+  function handleMasterEnded() {
+    if (!isPlaying) return;
+    isPlaying = false;
+    for (const t of tracks) {
+      try { t.el.pause(); } catch (e) {}
+      t.el.currentTime = 0;
     }
+    stopLoops();
+    releaseWakeLock();
+    if (window.UI) window.UI.stopVuLoop();
+    if (onPlaybackEnd) onPlaybackEnd();
   }
 
   function play() {
@@ -91,76 +140,69 @@ const Mixer = (() => {
       ctx.resume();
     }
 
-    createSourceNodes(pauseOffset);
+    const master = tracks[masterIndex].el;
+    const startAt = master.currentTime;
 
-    const scheduleTime = ctx.currentTime + 0.05;
-    for (const track of tracks) {
-      track.sourceNode.start(scheduleTime, pauseOffset);
+    for (const t of tracks) {
+      // Tracks shorter than the master stay silent past their own end
+      if (startAt < t.el.duration) {
+        t.el.currentTime = startAt;
+        t.el.play().catch(err => console.warn(`Play failed for ${t.name}:`, err.message));
+      }
     }
 
-    startTime = scheduleTime - pauseOffset;
     isPlaying = true;
-
-    // Listen for playback end on the longest track
-    const gen = ++playGeneration;
-    const longestTrack = tracks.reduce((a, b) =>
-      a.buffer.duration > b.buffer.duration ? a : b
-    );
-    longestTrack.sourceNode.onended = () => {
-      // Only handle if this is still the current play generation
-      if (gen === playGeneration && isPlaying) {
-        isPlaying = false;
-        pauseOffset = 0;
-        clearInterval(animFrameId); animFrameId = null;
-        if (window.UI) window.UI.stopVuLoop();
-        if (onPlaybackEnd) onPlaybackEnd();
-      }
-    };
-
-    startTimeUpdate();
+    startLoops();
+    requestWakeLock();
     if (window.UI) window.UI.startVuLoop();
   }
 
   function pause() {
     if (!isPlaying) return;
-
-    const ctx = getContext();
-    pauseOffset = ctx.currentTime - startTime;
-    stopSources();
+    for (const t of tracks) {
+      try { t.el.pause(); } catch (e) {}
+    }
     isPlaying = false;
-    clearInterval(animFrameId); animFrameId = null;
+    stopLoops();
+    releaseWakeLock();
     if (window.UI) window.UI.stopVuLoop();
   }
 
   function stop() {
-    stopSources();
+    for (const t of tracks) {
+      try { t.el.pause(); } catch (e) {}
+      t.el.currentTime = 0;
+    }
     isPlaying = false;
-    pauseOffset = 0;
-    clearInterval(animFrameId); animFrameId = null;
+    stopLoops();
+    releaseWakeLock();
     if (window.UI) window.UI.stopVuLoop();
     if (onTimeUpdate) onTimeUpdate(0, duration);
   }
 
-  function stopSources() {
-    playGeneration++; // invalidate any pending onended callbacks
-    for (const track of tracks) {
-      if (track.sourceNode) {
-        track.sourceNode.onended = null;
-        try { track.sourceNode.stop(); } catch (e) {}
-        track.sourceNode = null;
-      }
-    }
-  }
-
   function seekTo(time, autoPlay) {
-    stopSources();
-    isPlaying = false;
-    clearInterval(animFrameId); animFrameId = null;
-    pauseOffset = Math.max(0, Math.min(time, duration));
-    if (onTimeUpdate) onTimeUpdate(pauseOffset, duration);
-    if (autoPlay !== false) {
-      play();
+    const clamped = Math.max(0, Math.min(time, duration));
+    const wasPlaying = isPlaying;
+
+    for (const t of tracks) {
+      t.el.currentTime = Math.min(clamped, t.el.duration || clamped);
     }
+
+    if (autoPlay !== false) {
+      if (!wasPlaying) {
+        play();
+      } else {
+        // Already playing — restart any tracks the seek brought back into range
+        for (const t of tracks) {
+          if (t.el.paused && clamped < t.el.duration) {
+            t.el.play().catch(() => {});
+          }
+        }
+      }
+    } else if (wasPlaying) {
+      pause();
+    }
+    if (onTimeUpdate) onTimeUpdate(clamped, duration);
   }
 
   function setVolume(trackIndex, value) {
@@ -192,25 +234,63 @@ const Mixer = (() => {
     }
   }
 
-  function startTimeUpdate() {
-    const ctx = getContext();
-    // Use setInterval instead of requestAnimationFrame to avoid
+  function startLoops() {
+    // Time display — setInterval instead of requestAnimationFrame to avoid
     // throttling when the tab is not focused
-    if (animFrameId) clearInterval(animFrameId);
-    animFrameId = setInterval(() => {
-      if (!isPlaying) {
-        clearInterval(animFrameId);
-        animFrameId = null;
-        return;
-      }
-      const currentTime = ctx.currentTime - startTime;
-      if (onTimeUpdate) onTimeUpdate(currentTime, duration);
+    stopLoops();
+    timeUpdateId = setInterval(() => {
+      if (!isPlaying) return;
+      if (onTimeUpdate) onTimeUpdate(getCurrentTime(), duration);
     }, 100);
+
+    // Keep tracks locked to the master; media elements drift independently,
+    // especially on mobile when buffering stalls one stream
+    driftCheckId = setInterval(() => {
+      if (!isPlaying || masterIndex < 0) return;
+      const masterTime = tracks[masterIndex].el.currentTime;
+      tracks.forEach((t, i) => {
+        if (i === masterIndex) return;
+        if (masterTime >= t.el.duration) return; // legitimately finished
+        if (t.el.paused) {
+          t.el.currentTime = masterTime;
+          t.el.play().catch(() => {});
+        } else if (Math.abs(t.el.currentTime - masterTime) > DRIFT_TOLERANCE) {
+          t.el.currentTime = masterTime;
+        }
+      });
+    }, 1000);
   }
 
+  function stopLoops() {
+    if (timeUpdateId) { clearInterval(timeUpdateId); timeUpdateId = null; }
+    if (driftCheckId) { clearInterval(driftCheckId); driftCheckId = null; }
+  }
+
+  // Keep the screen on during playback (no-op where unsupported)
+  async function requestWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+    } catch (e) { /* denied (low battery etc.) — not critical */ }
+  }
+
+  function releaseWakeLock() {
+    if (wakeLock) {
+      wakeLock.release().catch(() => {});
+      wakeLock = null;
+    }
+  }
+
+  // Re-acquire wake lock when returning to the tab mid-playback
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && isPlaying) {
+      requestWakeLock();
+    }
+  });
+
   function getCurrentTime() {
-    if (!isPlaying) return pauseOffset;
-    return getContext().currentTime - startTime;
+    if (masterIndex < 0) return 0;
+    return tracks[masterIndex].el.currentTime;
   }
 
   function getDuration() {
@@ -219,6 +299,19 @@ const Mixer = (() => {
 
   function getIsPlaying() {
     return isPlaying;
+  }
+
+  // Per-track playback state — used to diagnose sync/buffering issues
+  function getSyncInfo() {
+    const masterTime = masterIndex >= 0 ? tracks[masterIndex].el.currentTime : 0;
+    return tracks.map((t, i) => ({
+      name: t.name,
+      time: t.el.currentTime,
+      driftMs: Math.round((t.el.currentTime - masterTime) * 1000),
+      paused: t.el.paused,
+      readyState: t.el.readyState,
+      isMaster: i === masterIndex,
+    }));
   }
 
   function getTrackLevels() {
@@ -267,6 +360,7 @@ const Mixer = (() => {
     getDuration,
     getIsPlaying,
     getTrackLevels,
+    getSyncInfo,
     setOnTimeUpdate,
     setOnPlaybackEnd,
     unlockAudio

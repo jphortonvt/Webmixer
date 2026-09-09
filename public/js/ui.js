@@ -3,6 +3,12 @@ const UI = (() => {
   const mixerEl = document.getElementById('mixer');
   let activeRenderLoop = false;
 
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
   function clearMixer() {
     mixerEl.innerHTML = '';
   }
@@ -19,7 +25,7 @@ const UI = (() => {
     strip.innerHTML = `
       <div class="track-number">${trackNum}</div>
       <button class="btn-track-icon" data-index="${index}" title="Set Track Category">${activeIcon}</button>
-      <div class="track-name">${trackName}</div>
+      <div class="track-name">${escapeHtml(trackName)}</div>
       <div class="channel-buttons">
         <button class="btn-mute" data-index="${index}">M</button>
         <button class="btn-solo" data-index="${index}">S</button>

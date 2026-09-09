@@ -659,6 +659,7 @@ header h1 {
   background: var(--slider-track);
   border-radius: 4px;
   outline: none;
+  touch-action: none; /* dragging the fader must not scroll the page */
 }
 
 .volume-slider::-webkit-slider-thumb {
@@ -747,6 +748,7 @@ header h1 {
   background: var(--slider-track);
   border-radius: 3px;
   outline: none;
+  touch-action: none;
 }
 
 .pan-slider::-webkit-slider-thumb {
@@ -1316,17 +1318,18 @@ input[type="range"]::-webkit-slider-runnable-track {
     -webkit-overflow-scrolling: touch;
   }
 
+  /* Touch-first strips: wider, with 40px+ hit targets */
   .channel-strip {
-    width: 68px;
-    min-width: 68px;
-    padding: 10px 6px;
-    min-height: 340px;
-    gap: 6px;
+    width: 96px;
+    min-width: 96px;
+    padding: 12px 8px;
+    min-height: 420px;
+    gap: 8px;
   }
 
   .channel-strip .track-name {
-    font-size: 0.55rem;
-    max-width: 60px;
+    font-size: 0.6rem;
+    max-width: 84px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1334,9 +1337,9 @@ input[type="range"]::-webkit-slider-runnable-track {
   }
 
   .btn-track-icon {
-    width: 22px;
-    height: 22px;
-    font-size: 0.8rem;
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
     margin-top: 1px;
   }
 
@@ -1344,24 +1347,58 @@ input[type="range"]::-webkit-slider-runnable-track {
     font-size: 0.9rem;
   }
 
-  /* Buttons row */
+  /* Buttons: 2x2 grid of 40px touch targets instead of a cramped row */
   .channel-buttons {
-    gap: 2px;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .btn-mute, .btn-solo, .btn-trim, .btn-boost {
-    width: 20px;
-    height: 18px;
-    font-size: 0.5rem;
+    width: 36px;
+    height: 34px;
+    font-size: 0.7rem;
   }
 
-  /* Volume slider */
-  .volume-slider {
-    height: 120px;
+  /* Volume slider: taller travel, fatter thumb.
+     A range input only accepts pointer events inside its own box, so the
+     visually-wide thumb is not enough — the box itself is widened to 40px
+     and a gradient paints just the middle 10px so the track still reads as
+     a thin fader line. (background-clip is ignored on range inputs.) */
+  /* Selector includes input[type="range"] so it outranks the global
+     input[type="range"] background rule (0,1,1 beats a bare class). */
+  input[type="range"].volume-slider {
+    height: 170px;
+    width: 40px;
+    box-sizing: border-box;
+    padding: 0 15px;
+    background-color: transparent;
+    background-image: linear-gradient(
+      to right,
+      transparent 0 15px,
+      var(--slider-track) 15px 25px,
+      transparent 25px 100%
+    );
+  }
+
+  /* The global runnable-track fills the full 40px box in vertical writing
+     mode; hide it so the element's own gradient defines the thin track. */
+  input[type="range"].volume-slider::-webkit-slider-runnable-track {
+    background: transparent;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    width: 34px;
+    height: 22px;
+  }
+
+  .volume-slider::-moz-range-thumb {
+    width: 34px;
+    height: 22px;
   }
 
   .volume-value {
-    font-size: 0.55rem;
+    font-size: 0.6rem;
   }
 
   .volume-container label {
@@ -1374,8 +1411,58 @@ input[type="range"]::-webkit-slider-runnable-track {
     padding: 0;
   }
 
-  .pan-slider {
-    width: 50px;
+  input[type="range"].pan-slider {
+    width: 76px;
+    height: 36px;
+    box-sizing: border-box;
+    padding: 13px 0;
+    background-color: transparent;
+    background-image: linear-gradient(
+      to bottom,
+      transparent 0 13px,
+      var(--slider-track) 13px 23px,
+      transparent 23px 100%
+    );
+  }
+
+  .pan-slider::-webkit-slider-thumb {
+    width: 22px;
+    height: 26px;
+  }
+
+  .pan-slider::-moz-range-thumb {
+    width: 22px;
+    height: 26px;
+  }
+
+  /* Transport buttons need real touch targets too */
+  #transport button {
+    padding: 10px 14px;
+    font-size: 0.8rem;
+    min-height: 42px;
+  }
+
+  #seek-bar {
+    height: 34px;
+    box-sizing: border-box;
+    padding: 12px 0;
+    background-color: transparent;
+    background-image: linear-gradient(
+      to bottom,
+      transparent 0 12px,
+      var(--slider-track) 12px 22px,
+      transparent 22px 100%
+    );
+  }
+
+  #seek-bar::-webkit-slider-thumb {
+    width: 26px;
+    height: 26px;
+  }
+
+  #seek-bar::-moz-range-thumb {
+    width: 26px;
+    height: 26px;
   }
 
   .pan-container label {

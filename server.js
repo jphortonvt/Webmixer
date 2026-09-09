@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 const { ready, seedAdmin, getDb } = require('./lib/db');
+const { SqliteSessionStore } = require('./lib/session-store');
 const { configurePassport } = require('./lib/passport');
 const apiRoutes = require('./routes/api');
 const authRoutes = require('./routes/auth');
@@ -36,17 +37,28 @@ ready.then(() => {
 
   const app = express();
 
-  // Middleware
-  app.use(cors());
+  // Middleware — CORS only when explicitly configured; the app is served
+  // same-origin so cross-origin API access is opt-in
+  if (process.env.ALLOWED_ORIGINS) {
+    app.use(cors({ origin: process.env.ALLOWED_ORIGINS.split(','), credentials: true }));
+  }
   app.use(express.json());
 
-  // Session (memory store — sessions lost on restart, fine for small app)
+  // Sessions persist in SQLite so logins survive restarts/deploys
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (isProduction && !process.env.SESSION_SECRET) {
+    console.error('FATAL: SESSION_SECRET must be set in production. Generate one with: openssl rand -hex 32');
+    process.exit(1);
+  }
   app.use(session({
-    secret: process.env.SESSION_SECRET || 'change-me',
+    secret: process.env.SESSION_SECRET || 'dev-only-secret',
+    store: new SqliteSessionStore(),
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+      httpOnly: true,
+      sameSite: 'lax'
     }
   }));
 
@@ -129,31 +141,61 @@ ready.then(() => {
   process.exit(1);
 });
 
+// Only the newest sessions are warmed at boot. Older ones transcode on first
+// open — the UI already handles the "preparing" state — so startup cost stays
+// constant as the session archive grows.
+const PRECACHE_RECENT_COUNT = parseInt(process.env.PRECACHE_RECENT_COUNT || '5', 10);
+const PRECACHE_CONCURRENCY = parseInt(process.env.PRECACHE_CONCURRENCY || '2', 10);
+
+// Run tasks with a bounded number in flight. Unlimited concurrency here
+// overwhelms ffmpeg and B2; serial is needlessly slow.
+async function runPool(items, limit, worker) {
+  let cursor = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const item = items[cursor++];
+      await worker(item);
+    }
+  });
+  await Promise.all(runners);
+}
+
 async function precacheAllSessions() {
   try {
-    console.log('[PRECACHE] Checking all sessions...');
-    const sessions = await getSessions();
+    if (PRECACHE_RECENT_COUNT === 0) {
+      console.log('[PRECACHE] Disabled (PRECACHE_RECENT_COUNT=0)');
+      return;
+    }
+
+    const all = await getSessions();
+    // getSessions() sorts ascending by id (which is a timestamp), so the
+    // newest sessions are at the end
+    const recent = all.slice(-PRECACHE_RECENT_COUNT);
+    console.log(`[PRECACHE] Warming ${recent.length} most recent of ${all.length} sessions (concurrency ${PRECACHE_CONCURRENCY})...`);
+
     let cached = 0;
     let transcoded = 0;
+    let failed = 0;
 
-    for (const session of sessions) {
-      const trackFiles = await getSessionTracks(session.id);
-      if (isSessionCached(CACHE_DIR, session.id, trackFiles)) {
-        cached++;
-        continue;
-      }
-
-      console.log(`[PRECACHE] Transcoding ${session.id} (${trackFiles.length} tracks)...`);
+    await runPool(recent, PRECACHE_CONCURRENCY, async (session) => {
       try {
+        const trackFiles = await getSessionTracks(session.id);
+        if (isSessionCached(CACHE_DIR, session.id, trackFiles)) {
+          cached++;
+          return;
+        }
+        console.log(`[PRECACHE] Transcoding ${session.id} (${trackFiles.length} tracks)...`);
         await transcodeSession(CACHE_DIR, session.id, trackFiles);
         transcoded++;
         console.log(`[PRECACHE] Done: ${session.id}`);
       } catch (err) {
+        failed++;
         console.error(`[PRECACHE] Failed: ${session.id}`, err.message);
       }
-    }
+    });
 
-    console.log(`[PRECACHE] Complete — ${cached} already cached, ${transcoded} newly transcoded.`);
+    const lazy = all.length - recent.length;
+    console.log(`[PRECACHE] Complete — ${cached} already cached, ${transcoded} transcoded, ${failed} failed, ${lazy} deferred to first open.`);
   } catch (err) {
     console.error('[PRECACHE] Error:', err.message);
   }
