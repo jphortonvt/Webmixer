@@ -50,6 +50,12 @@ ready.then(() => {
     console.error('FATAL: SESSION_SECRET must be set in production. Generate one with: openssl rand -hex 32');
     process.exit(1);
   }
+  // Behind a reverse proxy (Render/Fly/nginx) Express needs to trust
+  // X-Forwarded-Proto, or it sees plain HTTP and refuses to set a secure cookie
+  if (isProduction) {
+    app.set('trust proxy', 1);
+  }
+
   app.use(session({
     secret: process.env.SESSION_SECRET || 'dev-only-secret',
     store: new SqliteSessionStore(),
@@ -58,7 +64,9 @@ ready.then(() => {
     cookie: {
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       httpOnly: true,
-      sameSite: 'lax'
+      sameSite: 'lax',
+      // HTTPS-only in production; left off locally so plain-HTTP dev still works
+      secure: isProduction
     }
   }));
 

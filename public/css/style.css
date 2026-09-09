@@ -729,7 +729,7 @@ header h1 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   width: 100%;
 }
 
@@ -740,15 +740,31 @@ header h1 {
   letter-spacing: 1px;
 }
 
-.pan-slider {
+/* The box is as tall as the thumb so the thumb cannot overflow into the
+   pan value below it; a gradient keeps the visible track 6px.
+   Qualified with input[type="range"] to outrank the global range rule. */
+input[type="range"].pan-slider {
   -webkit-appearance: none;
   appearance: none;
   width: 80px;
-  height: 6px;
-  background: var(--slider-track);
+  height: 18px;
+  box-sizing: border-box;
+  padding: 6px 0;
+  background-color: transparent;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0 6px,
+    var(--slider-track) 6px 12px,
+    transparent 12px 100%
+  );
   border-radius: 3px;
   outline: none;
   touch-action: none;
+}
+
+/* Global runnable-track would paint its own bar over the gradient */
+input[type="range"].pan-slider::-webkit-slider-runnable-track {
+  background: transparent;
 }
 
 .pan-slider::-webkit-slider-thumb {
@@ -1411,17 +1427,19 @@ input[type="range"]::-webkit-slider-runnable-track {
     padding: 0;
   }
 
+  /* Box is 26px tall to match the thumb, plus padding for a 40px touch
+     area, so the thumb stays clear of the pan value beneath it. */
   input[type="range"].pan-slider {
     width: 76px;
-    height: 36px;
+    height: 40px;
     box-sizing: border-box;
-    padding: 13px 0;
+    padding: 15px 0;
     background-color: transparent;
     background-image: linear-gradient(
       to bottom,
-      transparent 0 13px,
-      var(--slider-track) 13px 23px,
-      transparent 23px 100%
+      transparent 0 15px,
+      var(--slider-track) 15px 25px,
+      transparent 25px 100%
     );
   }
 
