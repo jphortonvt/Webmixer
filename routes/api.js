@@ -35,14 +35,23 @@ router.get('/sessions', ensureAuthenticated, async (req, res) => {
     const starred = new Set(
       db.prepare('SELECT session_id FROM session_starred').all().map(r => r.session_id)
     );
+    const archived = new Set(
+      db.prepare('SELECT session_id FROM session_archived').all().map(r => r.session_id)
+    );
 
     for (const s of sessions) {
       s.customName = nameMap[s.id] || null;
       s.tags = tagMap[s.id] || [];
       s.starred = starred.has(s.id);
+      s.archived = archived.has(s.id);
     }
 
-    res.json(sessions);
+    // Archived sessions are hidden from the picker unless explicitly asked for
+    const visible = req.query.includeArchived
+      ? sessions
+      : sessions.filter(s => !s.archived);
+
+    res.json(visible);
   } catch (err) {
     console.error('Error listing sessions:', err);
     res.status(500).json({ error: 'Failed to list sessions' });
@@ -142,6 +151,24 @@ router.put('/sessions/:id/tags', ensureAuthenticated, (req, res) => {
   }
 });
 
+// Archive a session — hides it from everyone's picker. Restoring is
+// admin-only and lives in routes/admin.js.
+router.put('/sessions/:id/archive', ensureAuthenticated, (req, res) => {
+  const db = getDb();
+  try {
+    const existing = db.prepare('SELECT session_id FROM session_archived WHERE session_id = ?')
+      .get(req.params.id);
+    if (!existing) {
+      db.prepare('INSERT INTO session_archived (session_id, archived_by) VALUES (?, ?)')
+        .run(req.params.id, req.user.id);
+    }
+    res.json({ sessionId: req.params.id, archived: true });
+  } catch (err) {
+    console.error('Error archiving session:', err);
+    res.status(500).json({ error: 'Failed to archive session' });
+  }
+});
+
 router.put('/sessions/:id/star', ensureAuthenticated, (req, res) => {
   const starred = !!(req.body && req.body.starred);
   const db = getDb();
@@ -214,6 +241,39 @@ function formatRange(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+// Renders can take a while, so a mixdown runs as a job the client polls
+// rather than holding a request open with no feedback.
+const mixdownJobs = new Map();
+const JOB_TTL_MS = 10 * 60 * 1000;
+
+function setJob(jobId, patch) {
+  const job = Object.assign(mixdownJobs.get(jobId) || {}, patch, { updatedAt: Date.now() });
+  mixdownJobs.set(jobId, job);
+  return job;
+}
+
+// Drop finished jobs after a while so the map cannot grow without bound
+function reapJobs() {
+  const now = Date.now();
+  for (const [id, job] of mixdownJobs) {
+    if (job.stage !== 'running' && now - job.updatedAt > JOB_TTL_MS) mixdownJobs.delete(id);
+  }
+}
+
+router.get('/mixdown/:jobId', ensureAuthenticated, (req, res) => {
+  const job = mixdownJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Unknown or expired job' });
+  if (job.userId !== req.user.id) return res.status(403).json({ error: 'Not your export' });
+  res.json({
+    jobId: req.params.jobId,
+    stage: job.stage,
+    percent: job.percent || 0,
+    message: job.message || '',
+    song: job.song || null,
+    error: job.error || null,
+  });
+});
+
 router.post('/sessions/:id/mixdown', ensureAuthenticated, async (req, res) => {
   const sessionId = req.params.id;
   const { settings, format, startSeconds, endSeconds, name } = req.body || {};
@@ -229,18 +289,33 @@ router.post('/sessions/:id/mixdown', ensureAuthenticated, async (req, res) => {
     return res.status(400).json({ error: 'The out point must come after the in point' });
   }
 
+  reapJobs();
+  const jobId = `${sessionId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  setJob(jobId, { stage: 'running', percent: 0, message: 'Preparing…', userId: req.user.id });
+
+  // Answer immediately; the client follows GET /api/mixdown/:jobId
+  res.status(202).json({ jobId });
+
+  runMixdownJob(jobId, { sessionId, settings, ext, start, end, name, userId: req.user.id })
+    .catch(err => {
+      console.error('[MIXDOWN] Job failed:', err.message);
+      setJob(jobId, { stage: 'error', error: err.message || 'Export failed' });
+    });
+});
+
+async function runMixdownJob(jobId, { sessionId, settings, ext, start, end, name, userId }) {
   let rendered = null;
   try {
     const trackFiles = await getSessionTracks(sessionId);
 
     if (!isSessionCached(CACHE_DIR, sessionId, trackFiles)) {
-      return res.status(409).json({
-        error: 'This session is still being prepared. Open it in the mixer first, then export.'
-      });
+      throw new Error('This session is still being prepared. Open it in the mixer first, then export.');
     }
 
+    setJob(jobId, { percent: 0, message: 'Mixing tracks…' });
     rendered = await renderMixdown(CACHE_DIR, sessionId, trackFiles, settings, {
-      format: ext, startSeconds: start, endSeconds: end
+      format: ext, startSeconds: start, endSeconds: end,
+      onProgress: (percent) => setJob(jobId, { percent, message: 'Mixing tracks…' })
     });
 
     const db = getDb();
@@ -259,6 +334,7 @@ router.post('/sessions/:id/mixdown', ensureAuthenticated, async (req, res) => {
     const safeBase = songName.replace(/[^a-zA-Z0-9._\-()\s]/g, '_').slice(0, 80).trim();
     const filename = `${safeBase} ${Date.now()}.${ext}`;
 
+    setJob(jobId, { percent: 100, message: 'Uploading…' });
     const buffer = fs.readFileSync(rendered.outputPath);
     const contentType = ext === 'wav' ? 'audio/wav' : 'audio/mpeg';
     await uploadFile(`songs/${filename}`, buffer, contentType);
@@ -278,24 +354,21 @@ router.post('/sessions/:id/mixdown', ensureAuthenticated, async (req, res) => {
     ).run(
       songName, filename,
       (start != null && end != null) ? Math.round(end - start) : null,
-      req.user.id, sessionId, start, end
+      userId, sessionId, start, end
     );
 
     const song = db.prepare('SELECT * FROM songs WHERE id = ?').get(result.lastInsertRowid);
     console.log(`[MIXDOWN] ${sessionId}: saved "${songName}" (${rendered.trackCount} tracks)`);
-    res.status(201).json({ ...song, enabled: true, trackCount: rendered.trackCount });
-  } catch (err) {
-    console.error('[MIXDOWN] Failed:', err.message);
-    if (err.message === 'Session not found') {
-      return res.status(404).json({ error: 'Session not found' });
-    }
-    res.status(500).json({ error: err.message || 'Failed to render mixdown' });
+    setJob(jobId, {
+      stage: 'done', percent: 100, message: 'Saved to the Playlist',
+      song: { ...song, enabled: true, trackCount: rendered.trackCount }
+    });
   } finally {
     if (rendered && fs.existsSync(rendered.outputPath)) {
       fs.unlinkSync(rendered.outputPath);
     }
   }
-});
+}
 
 // GET track icons for a session
 router.get('/sessions/:id/icons', ensureAuthenticated, (req, res) => {

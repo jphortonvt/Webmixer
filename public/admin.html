@@ -106,6 +106,19 @@
     }
     .btn-remove:hover { border-color: var(--accent); color: var(--accent); }
 
+    .btn-restore {
+      background: var(--accent);
+      border: 1px solid var(--accent);
+      color: #fff;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-restore:hover { opacity: 0.9; }
+    .btn-restore:disabled { opacity: 0.5; cursor: default; }
+
     /* Upload section */
     .section-divider {
       border: none;
@@ -268,6 +281,20 @@
     </div>
 
     <div class="upload-results hidden" id="upload-results"></div>
+
+    <hr class="section-divider">
+
+    <div class="admin-header">
+      <h2>Archived Sessions</h2>
+    </div>
+
+    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 20px; line-height: 1.6;">
+      Sessions any member has archived. They are hidden from everyone's session
+      picker until restored here — nothing is deleted, and the audio stays in place.
+    </p>
+
+    <div id="archived-msg" class="msg hidden"></div>
+    <ul class="user-list" id="archived-list"></ul>
 
     <hr class="section-divider">
 
@@ -781,7 +808,86 @@
       });
     }
 
+    // --- Archived sessions ---------------------------------------------
+
+    const archivedList = document.getElementById('archived-list');
+    const archivedMsg = document.getElementById('archived-msg');
+
+    function showArchivedMsg(text, kind) {
+      archivedMsg.textContent = text;
+      archivedMsg.className = 'msg ' + kind;
+      setTimeout(() => archivedMsg.classList.add('hidden'), 4000);
+    }
+
+    function escapeHtml(str) {
+      const d = document.createElement('div');
+      d.textContent = str == null ? '' : str;
+      return d.innerHTML;
+    }
+
+    // "251213_000100" -> "Dec 13, 2025, 12:01 AM", matching the mixer's labels
+    function sessionLabelFromId(id) {
+      const m = /^(\d{2})(\d{2})(\d{2})_(\d{2})(\d{2})/.exec(id);
+      if (!m) return id;
+      const [, yy, mm, dd, HH, MM] = m;
+      const date = new Date(`20${yy}-${mm}-${dd}T${HH}:${MM}:00`);
+      if (isNaN(date)) return id;
+      return date.toLocaleString('en-US', {
+        month: 'short', day: 'numeric', year: 'numeric',
+        hour: 'numeric', minute: '2-digit', hour12: true
+      });
+    }
+
+    async function loadArchivedSessions() {
+      const res = await fetch('/api/admin/archived-sessions');
+      if (!res.ok) return;
+      const rows = await res.json();
+
+      archivedList.innerHTML = '';
+      if (rows.length === 0) {
+        archivedList.innerHTML = '<li style="color: var(--text-secondary); font-size: 0.85rem; padding: 12px 0; list-style: none;">No archived sessions.</li>';
+        return;
+      }
+
+      rows.forEach(r => {
+        const who = r.archived_by_name || r.archived_by_email || 'someone';
+        const tags = r.tags && r.tags.length ? '  ' + r.tags.map(t => '#' + t).join(' ') : '';
+        const title = escapeHtml(sessionLabelFromId(r.session_id)) +
+          (r.custom_name ? ' — ' + escapeHtml(r.custom_name) : '');
+
+        const li = document.createElement('li');
+        li.className = 'user-item';
+        li.innerHTML =
+          '<div class="user-info">' +
+            '<div>' +
+              '<div class="user-email">' + title + escapeHtml(tags) + '</div>' +
+              '<div class="user-name">' + escapeHtml(r.session_id) +
+                ' · archived by ' + escapeHtml(who) +
+                (r.archived_at ? ' on ' + escapeHtml(String(r.archived_at).slice(0, 10)) : '') +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<button class="btn-restore" data-id="' + escapeHtml(r.session_id) + '">Restore</button>';
+        archivedList.appendChild(li);
+
+        li.querySelector('.btn-restore').addEventListener('click', async (e) => {
+          const id = e.target.dataset.id;
+          const btn = e.target;
+          btn.disabled = true;
+          const resp = await fetch('/api/admin/archived-sessions/' + encodeURIComponent(id), { method: 'DELETE' });
+          if (resp.ok) {
+            showArchivedMsg('Restored ' + id + ' — it is back in the session list.', 'success');
+            loadArchivedSessions();
+          } else {
+            btn.disabled = false;
+            showArchivedMsg('Failed to restore ' + id + '.', 'error');
+          }
+        });
+      });
+    }
+
     loadSongs();
+    loadArchivedSessions();
   </script>
 </body>
 </html>

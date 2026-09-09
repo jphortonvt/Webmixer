@@ -23,6 +23,7 @@
         </select>
         <button id="btn-star-session" class="btn-icon hidden" title="Star this session">&#9734;</button>
         <button id="btn-edit-tags" class="btn-icon hidden" title="Tag this session">&#35;</button>
+        <button id="btn-archive-session" class="btn-icon hidden" title="Archive this session">&#128230;</button>
         <button id="btn-edit-name" class="btn-edit-name hidden" title="Name this session">&#9998;</button>
       </div>
       <div id="user-info" class="user-info hidden">
@@ -99,6 +100,12 @@
         <div class="modal-buttons">
           <button id="btn-mixdown-confirm" class="btn-primary">Export</button>
           <button id="btn-mixdown-cancel" class="btn-secondary">Cancel</button>
+        </div>
+        <div id="mixdown-progress" class="mixdown-progress hidden">
+          <div class="mixdown-progress-track">
+            <div class="mixdown-progress-bar" id="mixdown-progress-bar"></div>
+          </div>
+          <span class="mixdown-progress-pct" id="mixdown-progress-pct">0%</span>
         </div>
         <div id="mixdown-status" class="modal-hint"></div>
       </div>

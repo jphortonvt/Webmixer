@@ -7,6 +7,7 @@
   const sessionFilter = document.getElementById('session-filter');
   const tagsBtn = document.getElementById('btn-edit-tags');
   const starBtn = document.getElementById('btn-star-session');
+  const archiveBtn = document.getElementById('btn-archive-session');
   let sessionsList = []; // cached for refreshing dropdown
 
   // Mixdown in/out points, in seconds. null = full length.
@@ -137,7 +138,7 @@
   function updateSessionButtons() {
     const s = currentSession();
     const has = !!s;
-    [editNameBtn, tagsBtn, starBtn].forEach(b => b && b.classList.toggle('hidden', !has));
+    [editNameBtn, tagsBtn, starBtn, archiveBtn].forEach(b => b && b.classList.toggle('hidden', !has));
     if (s && starBtn) {
       starBtn.textContent = s.starred ? '★' : '☆';
       starBtn.classList.toggle('active', !!s.starred);
@@ -184,6 +185,37 @@
         console.error('Failed to update star:', err);
         s.starred = !next;
         updateSessionButtons();
+      }
+    });
+  }
+
+  // Archive — hides the session for everyone. Only an admin can bring it
+  // back (Admin page), so confirm before doing it.
+  if (archiveBtn) {
+    archiveBtn.addEventListener('click', async () => {
+      const s = currentSession();
+      if (!s) return;
+      const label = s.customName ? `${s.label} — ${s.customName}` : s.label;
+      if (!confirm(`Archive "${label}"?\n\nIt disappears from everyone's session list. An admin can restore it from the Admin page.`)) return;
+
+      try {
+        const res = await fetch(`/api/sessions/${s.id}/archive`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ archived: true }),
+        });
+        if (!res.ok) throw new Error('failed');
+
+        // Drop it from the picker and clear the mixer if it was loaded
+        sessionsList = sessionsList.filter(x => x.id !== s.id);
+        if (sessionSelect.value === s.id) {
+          sessionSelect.value = '';
+          sessionSelect.dispatchEvent(new Event('change'));
+        }
+        renderSessionDropdown('');
+      } catch (err) {
+        console.error('Failed to archive session:', err);
+        alert('Failed to archive session');
       }
     });
   }
@@ -319,6 +351,45 @@
     });
   }
 
+  const progressWrap = document.getElementById('mixdown-progress');
+  const progressBar = document.getElementById('mixdown-progress-bar');
+  const progressPct = document.getElementById('mixdown-progress-pct');
+
+  function showProgress(percent, message) {
+    if (progressWrap) progressWrap.classList.remove('hidden');
+    if (progressBar) progressBar.style.width = `${percent}%`;
+    if (progressPct) progressPct.textContent = `${percent}%`;
+    if (message) mixdownStatus.textContent = message;
+  }
+
+  function hideProgress() {
+    if (progressWrap) progressWrap.classList.add('hidden');
+    if (progressBar) progressBar.style.width = '0%';
+  }
+
+  // Poll the render job until it finishes, mirroring progress into the bar
+  async function followMixdownJob(jobId) {
+    const started = Date.now();
+    const TIMEOUT_MS = 10 * 60 * 1000;
+
+    while (Date.now() - started < TIMEOUT_MS) {
+      await new Promise(r => setTimeout(r, 600));
+
+      const res = await fetch(`/api/mixdown/${jobId}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Lost track of the export');
+      }
+      const job = await res.json();
+
+      if (job.stage === 'error') throw new Error(job.error || 'Export failed');
+      if (job.stage === 'done') return job.song;
+
+      showProgress(job.percent || 0, job.message || 'Rendering…');
+    }
+    throw new Error('Export timed out');
+  }
+
   const closeMixdownModal = () => mixdownModal.classList.add('hidden');
   const cancelBtn = document.getElementById('btn-mixdown-cancel');
   if (cancelBtn) cancelBtn.addEventListener('click', closeMixdownModal);
@@ -345,7 +416,7 @@
       }
 
       confirmBtn.disabled = true;
-      mixdownStatus.textContent = 'Rendering… this can take a moment.';
+      showProgress(0, 'Preparing…');
 
       try {
         const body = {
@@ -364,11 +435,15 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Export failed');
 
-        mixdownStatus.textContent = `Saved "${data.name}" to the Playlist (${data.trackCount} tracks).`;
+        const song = await followMixdownJob(data.jobId);
+
+        showProgress(100, 'Done');
+        mixdownStatus.textContent = `Saved "${song.name}" to the Playlist (${song.trackCount} tracks).`;
         if (window.Playlist && Playlist.load) Playlist.load();
-        setTimeout(closeMixdownModal, 1600);
+        setTimeout(() => { closeMixdownModal(); hideProgress(); }, 1800);
       } catch (err) {
         console.error('Mixdown failed:', err);
+        hideProgress();
         mixdownStatus.textContent = err.message || 'Export failed.';
       } finally {
         confirmBtn.disabled = false;
