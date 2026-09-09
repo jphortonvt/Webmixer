@@ -102,6 +102,11 @@ ready.then(() => {
       if (ext === '.mp3') res.set('Content-Type', 'audio/mpeg');
       if (ext === '.m4a') res.set('Content-Type', 'audio/mp4');
       if (ext === '.wav') res.set('Content-Type', 'audio/wav');
+      // ?download=1 forces a save instead of inline playback, so the same URL
+      // serves both the <audio> player and the download button
+      if (res.req && res.req.query && res.req.query.download) {
+        res.set('Content-Disposition', `attachment; filename="${encodeURIComponent(path.basename(filePath))}"`);
+      }
     }
   }));
 
@@ -122,6 +127,9 @@ ready.then(() => {
     const ext = path.extname(filename).toLowerCase();
     const ct = ext === '.m4a' ? 'audio/mp4' : ext === '.wav' ? 'audio/wav' : 'audio/mpeg';
     res.setHeader('Content-Type', ct);
+    if (req.query.download) {
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+    }
     res.sendFile(localPath);
   });
 

@@ -17,10 +17,12 @@
     <h1>[Insert Band Name Here]</h1>
     <div class="header-right">
       <div class="session-selector" id="session-selector-wrap">
-        <label for="session-select">Session:</label>
+        <input type="search" id="session-filter" class="session-filter" placeholder="Filter sessions, #tags, &#9733;" autocomplete="off">
         <select id="session-select" disabled>
           <option value="">Loading sessions...</option>
         </select>
+        <button id="btn-star-session" class="btn-icon hidden" title="Star this session">&#9734;</button>
+        <button id="btn-edit-tags" class="btn-icon hidden" title="Tag this session">&#35;</button>
         <button id="btn-edit-name" class="btn-edit-name hidden" title="Name this session">&#9998;</button>
       </div>
       <div id="user-info" class="user-info hidden">
@@ -45,6 +47,9 @@
       <button id="btn-pause" disabled>&#10074;&#10074; Pause</button>
       <button id="btn-stop" disabled>&#9632; Stop</button>
       <span id="time-display">00:00 / 00:00</span>
+      <button id="btn-set-in" class="btn-range" disabled title="Set the mixdown in point to the playhead">In</button>
+      <button id="btn-set-out" class="btn-range" disabled title="Set the mixdown out point to the playhead">Out</button>
+      <span id="range-display" class="range-display"></span>
       <div id="seek-container">
         <input type="range" id="seek-bar" min="0" max="100" value="0" step="0.1" disabled>
         <div id="comment-markers"></div>
@@ -62,7 +67,41 @@
 
     <div id="mix-actions" class="hidden">
       <button id="btn-save-mix">Save Mix</button>
+      <button id="btn-export-mix">Export Mixdown</button>
       <span id="mix-status"></span>
+    </div>
+
+    <div id="mixdown-modal" class="modal-overlay hidden">
+      <div class="modal-content">
+        <h3>Export Mixdown</h3>
+        <p>Renders the current mix — volumes, pans, mute and solo — into the Playlist.</p>
+        <div class="modal-field">
+          <label for="mixdown-name">Name</label>
+          <input type="text" id="mixdown-name" placeholder="Auto-named from the session">
+        </div>
+        <div class="modal-field">
+          <label>Range</label>
+          <div class="mixdown-range-row">
+            <input type="text" id="mixdown-start" placeholder="0:00" autocomplete="off">
+            <span class="range-sep">to</span>
+            <input type="text" id="mixdown-end" placeholder="end" autocomplete="off">
+            <button type="button" id="btn-range-clear" class="btn-secondary btn-inline">Full length</button>
+          </div>
+          <div class="modal-hint">mm:ss — set from the In/Out buttons on the transport, or type here.</div>
+        </div>
+        <div class="modal-field">
+          <label for="mixdown-format">Format</label>
+          <select id="mixdown-format">
+            <option value="mp3">MP3 — 192 kbps</option>
+            <option value="wav">WAV — 16-bit</option>
+          </select>
+        </div>
+        <div class="modal-buttons">
+          <button id="btn-mixdown-confirm" class="btn-primary">Export</button>
+          <button id="btn-mixdown-cancel" class="btn-secondary">Cancel</button>
+        </div>
+        <div id="mixdown-status" class="modal-hint"></div>
+      </div>
     </div>
 
     <div id="mix-save-modal" class="modal-overlay hidden">

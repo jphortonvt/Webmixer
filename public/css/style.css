@@ -68,6 +68,140 @@ header h1 {
   font-size: 0.9rem;
 }
 
+.session-filter {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  width: 150px;
+  outline: none;
+}
+
+.session-filter:focus {
+  border-color: var(--accent);
+}
+
+.session-filter::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+/* Star and tag buttons beside the session picker */
+.btn-icon {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.btn-icon:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-icon.active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* This stylesheet scopes .hidden per element rather than using one global rule */
+.btn-icon.hidden { display: none; }
+
+/* Mixdown in/out point buttons in the transport */
+.btn-range {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.btn-range:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-range:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.range-display {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+  min-width: 70px;
+}
+
+.mixdown-range-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mixdown-range-row input {
+  background: var(--bg-strip);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  width: 74px;
+  outline: none;
+}
+
+.mixdown-range-row .range-sep {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.btn-inline {
+  padding: 7px 12px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.modal-hint {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 6px;
+  min-height: 1.1em;
+}
+
+#btn-export-mix {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+#btn-export-mix:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 #session-select {
   background: var(--bg-surface);
   color: var(--text-primary);
@@ -399,6 +533,73 @@ header h1 {
   color: var(--text-secondary);
   font-family: monospace;
   flex-shrink: 0;
+}
+
+/* Title plus its provenance line for rendered mixdowns */
+.song-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.song-origin {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  opacity: 0.75;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Songs skipped in rotation stay in place, just visibly stood down */
+.song-row.disabled .song-title,
+.song-row.disabled .song-dur,
+.song-row.disabled .track-num {
+  opacity: 0.4;
+}
+
+.song-download {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.95rem;
+  border: 1px solid transparent;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.song-download:hover {
+  color: var(--accent);
+  border-color: var(--border);
+  background: var(--bg-surface);
+}
+
+.song-toggle {
+  flex-shrink: 0;
+  min-width: 42px;
+  height: 30px;
+  padding: 0 10px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.song-toggle.on {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
 
 .drag-placeholder {
@@ -1274,10 +1475,22 @@ input[type="range"]::-webkit-slider-runnable-track {
 
   .session-selector {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .session-selector label {
     display: none;
+  }
+
+  /* Filter takes its own row so the session picker keeps usable width */
+  .session-filter {
+    flex-basis: 100%;
+    width: 100%;
+  }
+
+  .btn-icon {
+    width: 40px;
+    height: 40px;
   }
 
   #session-select {

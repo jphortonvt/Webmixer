@@ -52,6 +52,42 @@ const Playlist = (() => {
     }, 800);
   }
 
+  // --- Rotation ---
+  // Disabled songs stay in the list at their saved position; they are only
+  // skipped when advancing. Clicking one directly still plays it.
+
+  function nextEnabledIdx(from) {
+    for (let i = from + 1; i < songs.length; i++) {
+      if (songs[i].enabled !== false) return i;
+    }
+    return -1;
+  }
+
+  function prevEnabledIdx(from) {
+    for (let i = from - 1; i >= 0; i--) {
+      if (songs[i].enabled !== false) return i;
+    }
+    return -1;
+  }
+
+  async function setEnabled(songId, enabled) {
+    const song = songs.find(s => s.id === songId);
+    if (song) song.enabled = enabled; // optimistic
+    render();
+    try {
+      const res = await fetch(`/api/playlist/${songId}/enabled`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      if (!res.ok) throw new Error('request failed');
+    } catch (e) {
+      console.error('[Playlist] enabled toggle error:', e);
+      if (song) song.enabled = !enabled; // roll back
+      render();
+    }
+  }
+
   // --- Playback ---
 
   function playSong(idx) {
@@ -77,11 +113,17 @@ const Playlist = (() => {
       return;
     }
     emptyEl.classList.add('hidden');
-    if (countEl) countEl.textContent = songs.length === 1 ? '1 song' : `${songs.length} songs`;
+    const onCount = songs.filter(s => s.enabled !== false).length;
+    if (countEl) {
+      countEl.textContent = onCount === songs.length
+        ? (songs.length === 1 ? '1 song' : `${songs.length} songs`)
+        : `${onCount} of ${songs.length} in rotation`;
+    }
 
     songs.forEach((song, idx) => {
+      const enabled = song.enabled !== false;
       const row = document.createElement('div');
-      row.className = 'song-row' + (idx === currentIdx ? ' playing' : '');
+      row.className = 'song-row' + (idx === currentIdx ? ' playing' : '') + (enabled ? '' : ' disabled');
       row.dataset.songId = String(song.id);
 
       const dur = song.duration ? `<span class="song-dur">${esc(formatDuration(song.duration))}</span>` : '';
@@ -89,16 +131,34 @@ const Playlist = (() => {
         ? '<span class="playing-icon">&#9654;</span>'
         : '<span class="playing-icon"></span>';
 
+      // Where a mixdown came from, so its origin is obvious in the list
+      let origin = '';
+      if (song.source_session_id) {
+        const range = (song.range_start != null || song.range_end != null)
+          ? ` · ${formatDuration(song.range_start || 0)}–${song.range_end != null ? formatDuration(song.range_end) : 'end'}`
+          : '';
+        origin = `<span class="song-origin">Mixdown of ${esc(song.source_session_id)}${esc(range)}</span>`;
+      }
+
+      const href = '/songs/' + encodeURIComponent(song.filename) + '?download=1';
+
       row.innerHTML =
         '<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>' +
         `<span class="track-num">${idx + 1}</span>` +
         playIcon +
-        `<span class="song-title">${esc(song.name)}</span>` +
-        dur;
+        `<span class="song-main"><span class="song-title">${esc(song.name)}</span>${origin}</span>` +
+        dur +
+        `<a class="song-download" href="${href}" download title="Download">&#8681;</a>` +
+        `<button class="song-toggle${enabled ? ' on' : ''}" title="${enabled ? 'In rotation — click to skip' : 'Skipped — click to include'}">${enabled ? 'On' : 'Off'}</button>`;
 
-      // Click anywhere on the row (except the handle) to play
       row.addEventListener('click', (e) => {
         if (e.target.classList.contains('drag-handle')) return;
+        if (e.target.closest('.song-download')) return;      // let the link do its job
+        if (e.target.closest('.song-toggle')) {
+          e.stopPropagation();
+          setEnabled(song.id, !enabled);
+          return;
+        }
         playSong(idx);
       });
 
@@ -281,18 +341,16 @@ const Playlist = (() => {
     // Previous track
     if (prevBtn) {
       prevBtn.addEventListener('click', () => {
-        if (currentIdx > 0) {
-          playSong(currentIdx - 1);
-        }
+        const i = prevEnabledIdx(currentIdx);
+        if (i !== -1) playSong(i);
       });
     }
 
     // Next track
     if (nextBtn) {
       nextBtn.addEventListener('click', () => {
-        if (currentIdx >= 0 && currentIdx + 1 < songs.length) {
-          playSong(currentIdx + 1);
-        }
+        const i = nextEnabledIdx(currentIdx);
+        if (i !== -1) playSong(i);
       });
     }
 
@@ -349,8 +407,9 @@ const Playlist = (() => {
 
     // Auto-advance to the next song when current one ends
     audioEl.addEventListener('ended', () => {
-      if (currentIdx >= 0 && currentIdx + 1 < songs.length) {
-        playSong(currentIdx + 1);
+      const i = nextEnabledIdx(currentIdx);
+      if (i !== -1) {
+        playSong(i);
       } else {
         if (playPauseBtn) playPauseBtn.innerHTML = '&#9654; Play';
         if (seekBar) seekBar.value = 0;
