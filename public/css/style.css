@@ -637,6 +637,33 @@ header h1 {
   border-color: var(--accent);
 }
 
+/* Destructive, so it stays quiet until hovered */
+.song-delete {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 1.05rem;
+  line-height: 1;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  opacity: 0.55;
+  transition: opacity 0.15s, color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.song-delete:hover {
+  opacity: 1;
+  color: #fff;
+  background: #cc3333;
+  border-color: #cc3333;
+}
+
 .drag-placeholder {
   border: 2px dashed var(--accent);
   border-radius: 6px;

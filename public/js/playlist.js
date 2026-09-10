@@ -70,6 +70,50 @@ const Playlist = (() => {
     return -1;
   }
 
+  // Admins can delete anything; everyone else only what they added.
+  function canDelete(song) {
+    // Auth is a top-level const, so it is a global binding but NOT a property
+    // of window — only UI is explicitly bound there. Reference it by name.
+    const user = (typeof Auth !== 'undefined' && Auth.getUser) ? Auth.getUser() : null;
+    if (!user) return false;
+    return !!user.is_admin || song.added_by === user.id;
+  }
+
+  async function deleteSong(song) {
+    const origin = song.source_session_id ? '\n\nThis was a mixdown of ' + song.source_session_id + '.' : '';
+    const ok = confirm(
+      `Delete "${song.name}"?${origin}\n\n` +
+      'It is removed for everyone and taken out of all playlists. This cannot be undone from here.'
+    );
+    if (!ok) return;
+
+    try {
+      const res = await fetch(`/api/songs/${song.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Delete failed');
+      }
+
+      // If the deleted song was playing, stop and clear the player
+      const wasIdx = songs.findIndex(s => s.id === song.id);
+      if (wasIdx === currentIdx) {
+        audioEl.pause();
+        audioEl.removeAttribute('src');
+        audioEl.load();
+        currentIdx = -1;
+        nowPlayingEl.textContent = '—';
+      } else if (wasIdx < currentIdx) {
+        currentIdx -= 1; // keep pointing at the same song
+      }
+
+      songs = songs.filter(s => s.id !== song.id);
+      render();
+    } catch (err) {
+      console.error('[Playlist] delete error:', err);
+      alert(err.message || 'Failed to delete song');
+    }
+  }
+
   async function setEnabled(songId, enabled) {
     const song = songs.find(s => s.id === songId);
     if (song) song.enabled = enabled; // optimistic
@@ -149,11 +193,19 @@ const Playlist = (() => {
         `<span class="song-main"><span class="song-title">${esc(song.name)}</span>${origin}</span>` +
         dur +
         `<a class="song-download" href="${href}" download title="Download">&#8681;</a>` +
-        `<button class="song-toggle${enabled ? ' on' : ''}" title="${enabled ? 'In rotation — click to skip' : 'Skipped — click to include'}">${enabled ? 'On' : 'Off'}</button>`;
+        `<button class="song-toggle${enabled ? ' on' : ''}" title="${enabled ? 'In rotation — click to skip' : 'Skipped — click to include'}">${enabled ? 'On' : 'Off'}</button>` +
+        (canDelete(song)
+          ? '<button class="song-delete" title="Delete this song for everyone">&#215;</button>'
+          : '');
 
       row.addEventListener('click', (e) => {
         if (e.target.classList.contains('drag-handle')) return;
         if (e.target.closest('.song-download')) return;      // let the link do its job
+        if (e.target.closest('.song-delete')) {
+          e.stopPropagation();
+          deleteSong(song);
+          return;
+        }
         if (e.target.closest('.song-toggle')) {
           e.stopPropagation();
           setEnabled(song.id, !enabled);

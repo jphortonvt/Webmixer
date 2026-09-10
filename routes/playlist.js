@@ -2,7 +2,8 @@ const express = require('express');
 const path = require('path');
 const { ensureAuthenticated, ensureAdmin } = require('../middleware/auth');
 const { getDb } = require('../lib/db');
-const { getUploadUrl } = require('../lib/b2');
+const fs = require('fs');
+const { getUploadUrl, deleteFile } = require('../lib/b2');
 
 const router = express.Router();
 
@@ -14,7 +15,7 @@ router.get('/songs', ensureAuthenticated, (req, res) => {
   // Return songs ordered by user's saved position; songs without a position come last (ordered by id).
   // enabled defaults to 1 for songs the user has no playlist row for yet.
   const songs = db.prepare(`
-    SELECT s.id, s.name, s.filename, s.duration, s.added_at,
+    SELECT s.id, s.name, s.filename, s.duration, s.added_at, s.added_by,
            s.source_session_id, s.range_start, s.range_end,
            COALESCE(pi.position, 999999) AS _pos,
            COALESCE(pi.enabled, 1) AS enabled
@@ -59,6 +60,48 @@ router.put('/playlist/:songId/enabled', ensureAuthenticated, (req, res) => {
     console.error('[PLAYLIST] Enabled toggle error:', err);
     res.status(500).json({ error: 'Failed to update song' });
   }
+});
+
+// DELETE /api/songs/:id — remove a song for everyone.
+// Admins can delete anything; a member can delete a song they added, which is
+// mainly how you clean up a mixdown you rendered by mistake.
+router.delete('/songs/:id', ensureAuthenticated, async (req, res) => {
+  const songId = parseInt(req.params.id, 10);
+  if (isNaN(songId)) return res.status(400).json({ error: 'Invalid id' });
+
+  const db = getDb();
+  const song = db.prepare('SELECT * FROM songs WHERE id = ?').get(songId);
+  if (!song) return res.status(404).json({ error: 'Song not found' });
+
+  const isOwner = song.added_by === req.user.id;
+  if (!req.user.is_admin && !isOwner) {
+    return res.status(403).json({ error: 'Only an admin or whoever added this song can delete it' });
+  }
+
+  try {
+    db.prepare('DELETE FROM playlist_items WHERE song_id = ?').run(songId);
+    db.prepare('DELETE FROM songs WHERE id = ?').run(songId);
+  } catch (err) {
+    console.error('[SONGS] Delete error:', err);
+    return res.status(500).json({ error: 'Failed to delete song' });
+  }
+
+  // The row is gone either way; losing the audio file is not worth failing the
+  // request over, and the bucket keeps versions so this is recoverable.
+  try {
+    await deleteFile(`songs/${song.filename}`);
+  } catch (err) {
+    console.warn(`[SONGS] Could not remove songs/${song.filename} from B2:`, err.message);
+  }
+  try {
+    const local = path.join(path.resolve(process.env.SONGS_CACHE_DIR || './songs-cache'), song.filename);
+    if (fs.existsSync(local)) fs.unlinkSync(local);
+  } catch (err) {
+    console.warn('[SONGS] Could not remove local cache copy:', err.message);
+  }
+
+  console.log(`[SONGS] Deleted "${song.name}" (by ${req.user.email})`);
+  res.json({ message: 'Song deleted', id: songId });
 });
 
 // PUT /api/playlist/order — save the user's song order

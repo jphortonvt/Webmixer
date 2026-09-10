@@ -439,7 +439,8 @@
 
         showProgress(100, 'Done');
         mixdownStatus.textContent = `Saved "${song.name}" to the Playlist (${song.trackCount} tracks).`;
-        if (window.Playlist && Playlist.load) Playlist.load();
+        // Playlist is a top-level const, not a window property
+        if (typeof Playlist !== 'undefined' && Playlist.load) Playlist.load();
         setTimeout(() => { closeMixdownModal(); hideProgress(); }, 1800);
       } catch (err) {
         console.error('Mixdown failed:', err);
