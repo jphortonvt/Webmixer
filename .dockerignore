@@ -1,0 +1,13 @@
+node_modules
+npm-debug.log
+
+# Local working data — the server rebuilds these, and the archive is large
+cache
+songs-cache
+raw_audio
+data
+
+.env
+.git
+.claude
+.DS_Store
