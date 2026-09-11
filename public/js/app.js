@@ -8,7 +8,9 @@
   const tagsBtn = document.getElementById('btn-edit-tags');
   const starBtn = document.getElementById('btn-star-session');
   const archiveBtn = document.getElementById('btn-archive-session');
+  const starredFilterBtn = document.getElementById('btn-filter-starred');
   let sessionsList = []; // cached for refreshing dropdown
+  let starredOnly = false;
 
   // Mixdown in/out points, in seconds. null = full length.
   let mixdownStart = null;
@@ -85,14 +87,14 @@
   }
 
   function matchesFilter(s, query) {
+    // The star toggle is the discoverable way to narrow to keepers; typing a
+    // ★ is not something you can do from a keyboard.
+    if (starredOnly && !s.starred) return false;
     if (!query) return true;
-    // "star" or a bare star character filters to starred sessions
+
     const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
     const hay = sessionLabel(s).toLowerCase() + ' ' + s.id.toLowerCase();
-    return terms.every(term => {
-      if (term === '★' || term === 'star' || term === 'starred') return !!s.starred;
-      return hay.includes(term.replace(/^#/, '#'));
-    });
+    return terms.every(term => hay.includes(term));
   }
 
   function renderSessionDropdown(selectedId) {
@@ -103,8 +105,11 @@
     sessionSelect.innerHTML = '';
     const placeholder = document.createElement('option');
     placeholder.value = '';
-    placeholder.textContent = query
-      ? `-- ${visible.length} of ${sessionsList.length} sessions --`
+    // Say how many are showing whenever anything is narrowing the list —
+    // the star toggle counts, not just typed text
+    const filtering = !!query || starredOnly;
+    placeholder.textContent = filtering
+      ? `-- ${visible.length} of ${sessionsList.length}${starredOnly ? ' starred' : ''} --`
       : '-- Select a session --';
     sessionSelect.appendChild(placeholder);
 
@@ -163,6 +168,18 @@
   // Filter the dropdown as you type — the whole list is already loaded
   if (sessionFilter) {
     sessionFilter.addEventListener('input', () => renderSessionDropdown());
+  }
+
+  // Starred-only toggle
+  if (starredFilterBtn) {
+    starredFilterBtn.addEventListener('click', () => {
+      starredOnly = !starredOnly;
+      starredFilterBtn.textContent = starredOnly ? '★' : '☆';
+      starredFilterBtn.classList.toggle('active', starredOnly);
+      starredFilterBtn.setAttribute('aria-pressed', String(starredOnly));
+      starredFilterBtn.title = starredOnly ? 'Showing starred only — click to show all' : 'Show only starred sessions';
+      renderSessionDropdown();
+    });
   }
 
   // Star / unstar (shared across the band, not per-user)
@@ -310,13 +327,25 @@
     return Number.isFinite(n) ? n : null;
   }
 
+  const rangeResetBtn = document.getElementById('btn-range-reset');
+
   function updateRangeDisplay() {
-    if (!rangeDisplay) return;
-    if (mixdownStart == null && mixdownEnd == null) {
-      rangeDisplay.textContent = '';
-      return;
+    const isSet = mixdownStart != null || mixdownEnd != null;
+    if (rangeDisplay) {
+      rangeDisplay.textContent = isSet
+        ? `${fmtTime(mixdownStart || 0)}–${mixdownEnd != null ? fmtTime(mixdownEnd) : 'end'}`
+        : 'full length';
+      rangeDisplay.classList.toggle('is-set', isSet);
     }
-    rangeDisplay.textContent = `${fmtTime(mixdownStart || 0)}–${mixdownEnd != null ? fmtTime(mixdownEnd) : 'end'}`;
+    if (rangeResetBtn) rangeResetBtn.classList.toggle('hidden', !isSet);
+  }
+
+  if (rangeResetBtn) {
+    rangeResetBtn.addEventListener('click', () => {
+      mixdownStart = null;
+      mixdownEnd = null;
+      updateRangeDisplay();
+    });
   }
 
   if (setInBtn) {
@@ -326,10 +355,23 @@
       updateRangeDisplay();
     });
   }
+  const mixStatus = document.getElementById('mix-status');
+  let mixStatusTimer = null;
+  function flashMixStatus(text) {
+    if (!mixStatus) return;
+    mixStatus.textContent = text;
+    if (mixStatusTimer) clearTimeout(mixStatusTimer);
+    mixStatusTimer = setTimeout(() => { mixStatus.textContent = ''; }, 3000);
+  }
+
   if (setOutBtn) {
     setOutBtn.addEventListener('click', () => {
       const t = Mixer.getCurrentTime();
-      if (mixdownStart != null && t <= mixdownStart) return; // out must follow in
+      // Out must follow In — say so rather than ignoring the click
+      if (mixdownStart != null && t <= mixdownStart) {
+        flashMixStatus(`Out point must come after the in point (${fmtTime(mixdownStart)}).`);
+        return;
+      }
       mixdownEnd = t;
       updateRangeDisplay();
     });
@@ -458,10 +500,14 @@
     const sessionId = sessionSelect.value;
     updateSessionButtons();
 
-    // A new session invalidates any in/out points from the previous one
+    // A new session invalidates any in/out points from the previous one.
+    // The export modal goes too — left open it would still show the previous
+    // session's name while exporting the new one.
     mixdownStart = null;
     mixdownEnd = null;
     updateRangeDisplay();
+    if (mixdownModal) mixdownModal.classList.add('hidden');
+    if (mixStatus) mixStatus.textContent = '';
     if (setInBtn) setInBtn.disabled = true;
     if (setOutBtn) setOutBtn.disabled = true;
     if (!sessionId) {

@@ -49,6 +49,7 @@ header {
 }
 
 header h1 {
+  flex-shrink: 0;
   font-size: 1.4rem;
   font-weight: 700;
   letter-spacing: 2px;
@@ -60,7 +61,9 @@ header h1 {
 .session-selector {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  min-width: 0;
+  flex-shrink: 1;
 }
 
 .session-selector label {
@@ -142,11 +145,38 @@ header h1 {
   cursor: default;
 }
 
+.btn-range.hidden { display: none; }
+
+.range-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Spacer between the primary actions and the range controls */
+.mix-actions-sep {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
 .range-display {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
+  color: var(--text-secondary);
+  min-width: 78px;
+}
+
+/* Reads as neutral until a range is actually set */
+.range-display.is-set {
   color: var(--accent);
-  min-width: 70px;
+}
+
+.btn-filter-starred {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .mixdown-range-row {
@@ -244,7 +274,10 @@ header h1 {
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 0.9rem;
-  min-width: 260px;
+  min-width: 0;
+  width: 260px;
+  max-width: 100%;
+  flex-shrink: 1;
   cursor: pointer;
 }
 
@@ -1139,6 +1172,12 @@ input[type="range"]::-webkit-slider-runnable-track {
   display: flex;
   align-items: center;
   gap: 16px;
+  /* The session row carries a filter, picker and four buttons — let it wrap
+     and shrink rather than pushing the header past the viewport */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+  flex: 1;
 }
 
 .user-info {
@@ -1221,6 +1260,7 @@ input[type="range"]::-webkit-slider-runnable-track {
   gap: 12px;
   padding: 12px 24px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 #mix-actions.hidden { display: none; }

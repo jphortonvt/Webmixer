@@ -17,7 +17,8 @@
     <h1>[Insert Band Name Here]</h1>
     <div class="header-right">
       <div class="session-selector" id="session-selector-wrap">
-        <input type="search" id="session-filter" class="session-filter" placeholder="Filter sessions, #tags, &#9733;" autocomplete="off">
+        <input type="search" id="session-filter" class="session-filter" placeholder="Filter sessions or #tags" autocomplete="off">
+        <button id="btn-filter-starred" class="btn-icon btn-filter-starred" title="Show only starred sessions" aria-pressed="false">&#9734;</button>
         <select id="session-select" disabled>
           <option value="">Loading sessions...</option>
         </select>
@@ -48,9 +49,6 @@
       <button id="btn-pause" disabled>&#10074;&#10074; Pause</button>
       <button id="btn-stop" disabled>&#9632; Stop</button>
       <span id="time-display">00:00 / 00:00</span>
-      <button id="btn-set-in" class="btn-range" disabled title="Set the mixdown in point to the playhead">In</button>
-      <button id="btn-set-out" class="btn-range" disabled title="Set the mixdown out point to the playhead">Out</button>
-      <span id="range-display" class="range-display"></span>
       <div id="seek-container">
         <input type="range" id="seek-bar" min="0" max="100" value="0" step="0.1" disabled>
         <div id="comment-markers"></div>
@@ -69,6 +67,12 @@
     <div id="mix-actions" class="hidden">
       <button id="btn-save-mix">Save Mix</button>
       <button id="btn-export-mix">Export Mixdown</button>
+      <span class="mix-actions-sep"></span>
+      <span class="range-label">Range</span>
+      <button id="btn-set-in" class="btn-range" disabled title="Set the mixdown in point to the playhead">Set In</button>
+      <button id="btn-set-out" class="btn-range" disabled title="Set the mixdown out point to the playhead">Set Out</button>
+      <span id="range-display" class="range-display">full length</span>
+      <button id="btn-range-reset" class="btn-range hidden" title="Clear the in and out points">Clear</button>
       <span id="mix-status"></span>
     </div>
 
