@@ -7,11 +7,13 @@
   --bg-strip: #0d0d1a;
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
-  --accent: #f43f5e;
-  --accent-dim: #be123c;
-  --accent-glow: rgba(244, 63, 94, 0.45);
+  --accent: #39ff14;
+  --accent-dim: #1ca80b;
+  --accent-glow: rgba(57, 255, 20, 0.38);
   --slider-track: #1e293b;
-  --slider-thumb: #f43f5e;
+  --slider-thumb: #39ff14;
+  /* Neon green is too light for white text to sit on */
+  --on-accent: #05140a;
   --border: rgba(255, 255, 255, 0.08);
   --glass-bg: rgba(10, 10, 18, 0.75);
   --glass-border: rgba(255, 255, 255, 0.05);
@@ -26,7 +28,7 @@
 body {
   font-family: 'Outfit', 'Segoe UI', system-ui, -apple-system, sans-serif;
   background: var(--bg-primary);
-  background-image: radial-gradient(circle at 50% 0%, #1c102a 0%, var(--bg-primary) 75%);
+  background-image: radial-gradient(circle at 50% 0%, #0d2416 0%, var(--bg-primary) 75%);
   color: var(--text-primary);
   min-height: 100vh;
   letter-spacing: -0.2px;
@@ -422,7 +424,7 @@ header h1 {
 .playlist-btn-row .btn-ctrl:hover:not(:disabled) {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 0 15px var(--accent-glow);
   transform: translateY(-2px);
 }
@@ -557,7 +559,7 @@ header h1 {
 
 .song-row.playing {
   border-color: var(--accent);
-  background: rgba(233, 69, 96, 0.07);
+  background: rgba(57, 255, 20, 0.07);
 }
 
 .drag-handle {
@@ -666,7 +668,7 @@ header h1 {
 
 .song-toggle.on {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border-color: var(--accent);
 }
 
@@ -700,7 +702,7 @@ header h1 {
 .drag-placeholder {
   border: 2px dashed var(--accent);
   border-radius: 6px;
-  background: rgba(233, 69, 96, 0.04);
+  background: rgba(57, 255, 20, 0.04);
   flex-shrink: 0;
 }
 
@@ -1267,7 +1269,7 @@ input[type="range"]::-webkit-slider-runnable-track {
 
 #btn-save-mix {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 6px;
   padding: 8px 20px;
@@ -1355,7 +1357,7 @@ input[type="range"]::-webkit-slider-runnable-track {
 
 .btn-primary {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 6px;
   padding: 8px 20px;
@@ -1438,7 +1440,7 @@ input[type="range"]::-webkit-slider-runnable-track {
 
 #btn-post-comment, .btn-send-reply {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   border-radius: 6px;
   padding: 8px 16px;

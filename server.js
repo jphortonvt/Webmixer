@@ -141,7 +141,7 @@ ready.then(() => {
   app.use('/api/admin', adminRoutes);
 
   app.listen(PORT, () => {
-    console.log(`[Insert Band Name Here] server running at http://localhost:${PORT}`);
+    console.log(`TRAXXXXXXXXS server running at http://localhost:${PORT}`);
 
     // Configure B2 CORS for direct browser uploads
     configureCors();

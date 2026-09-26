@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>[Insert Band Name Here] - Admin</title>
+  <title>TRAXXXXXXXXS - Admin</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎚</text></svg>">
   <link rel="stylesheet" href="/css/style.css">
   <style>
@@ -45,7 +45,7 @@
     }
     .invite-form button {
       background: var(--accent);
-      color: #fff;
+      color: var(--on-accent);
       border: none;
       border-radius: 6px;
       padding: 10px 20px;
@@ -60,7 +60,7 @@
       font-size: 0.85rem;
     }
     .msg.success { background: rgba(100,200,100,0.15); color: #8c8; border: 1px solid #4a6; }
-    .msg.error { background: rgba(233,69,96,0.15); color: var(--accent); border: 1px solid var(--accent); }
+    .msg.error { background: rgba(233,69,96,0.15); color: #ff6b81; border: 1px solid #cc3344; }
     .msg.hidden { display: none; }
     .user-list { list-style: none; }
     .user-item {
@@ -92,7 +92,7 @@
       border-radius: 4px;
       margin-left: 8px;
     }
-    .status-admin { background: var(--accent); color: #fff; }
+    .status-admin { background: var(--accent); color: var(--on-accent); }
     .status-active { background: #4a6; color: #fff; }
     .status-pending { background: var(--bg-surface); color: var(--text-secondary); }
     .btn-remove {
@@ -109,7 +109,7 @@
     .btn-restore {
       background: var(--accent);
       border: 1px solid var(--accent);
-      color: #fff;
+      color: var(--on-accent);
       border-radius: 4px;
       padding: 4px 12px;
       font-size: 0.75rem;
@@ -136,7 +136,7 @@
     }
     .upload-area:hover, .upload-area.dragover {
       border-color: var(--accent);
-      background: rgba(233, 69, 96, 0.05);
+      background: rgba(57, 255, 20, 0.05);
     }
     .upload-area p {
       color: var(--text-secondary);
@@ -213,7 +213,7 @@
     .btn-upload-all {
       flex: 1;
       background: var(--accent);
-      color: #fff;
+      color: var(--on-accent);
       border: none;
       border-radius: 6px;
       padding: 10px 20px;
@@ -237,7 +237,7 @@
 </head>
 <body>
   <header>
-    <h1>[Insert Band Name Here]</h1>
+    <h1>TRAXXXXXXXXS</h1>
   </header>
   <div class="admin-container">
     <div class="admin-header">
@@ -313,7 +313,7 @@
         style="flex: 1; min-width: 180px; background: var(--bg-surface); color: var(--text-primary);
                border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; font-size: 0.9rem;">
       <button id="btn-pick-song"
-        style="background: var(--accent); color: #fff; border: none; border-radius: 6px;
+        style="background: var(--accent); color: var(--on-accent); border: none; border-radius: 6px;
                padding: 10px 20px; font-size: 0.9rem; cursor: pointer; white-space: nowrap;">
         Choose File
       </button>
