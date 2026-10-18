@@ -233,6 +233,54 @@
     }
     .btn-clear-queue:hover { border-color: var(--text-secondary); }
     .btn-clear-queue.hidden { display: none; }
+
+    /* Session chooser (shown when a pick or drop holds several sessions) */
+    .upload-chooser {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+    .upload-chooser.hidden { display: none; }
+    .chooser-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 0.85rem;
+      color: var(--text-primary);
+    }
+    .chooser-bulk { display: flex; gap: 6px; }
+    .chooser-bulk button {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+    .chooser-bulk button:hover { border-color: var(--accent); color: var(--accent); }
+    .chooser-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: var(--bg-strip);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .chooser-row.disabled { opacity: 0.5; cursor: default; }
+    .chooser-row input { accent-color: var(--accent); width: 16px; height: 16px; }
+    .chooser-note { font-size: 0.75rem; color: var(--text-secondary); font-style: italic; }
+    .chooser-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .chooser-actions .btn-upload-all:disabled { opacity: 0.4; cursor: default; }
   </style>
 </head>
 <body>
@@ -261,10 +309,12 @@
     </div>
 
     <div class="upload-area" id="upload-area">
-      <p>Drag session folders here, or click to pick one</p>
-      <p class="upload-hint">Drop several folders at once, or pick a parent folder to add every session inside it (e.g., 251213_000100/TRACK01.WAV)</p>
+      <p>Drag session folders here, or click to pick a folder</p>
+      <p class="upload-hint">Folders hold WAV files, e.g. 251213_000100/TRACK01.WAV. To add several, drop them together or pick the folder that holds them (like the SD card) and choose sessions from the list.</p>
       <input type="file" class="upload-file-input" id="upload-input" webkitdirectory multiple>
     </div>
+
+    <div id="upload-chooser" class="upload-chooser hidden"></div>
 
     <div id="upload-queue" class="upload-queue hidden"></div>
 
@@ -505,29 +555,44 @@
         return;
       }
 
-      // Group by session folder
+      // Group by session folder. WAVs outside a YYMMDD_HHMMSS folder have no
+      // session to upload into, so they are counted and left out.
       const folderMap = {};
+      let strays = 0;
       for (const f of wavFiles) {
-        const filePath = relPathOf(f);
-        const parts = filePath.split('/');
-        let folder = 'Unknown';
-        for (const p of parts) {
-          if (/^\d{6}_\d{6}$/.test(p)) { folder = p; break; }
-        }
+        const folder = relPathOf(f).split('/').find(p => /^\d{6}_\d{6}$/.test(p));
+        if (!folder) { strays++; continue; }
         if (!folderMap[folder]) folderMap[folder] = [];
         folderMap[folder].push(f);
       }
 
-      // Add each folder to the queue (skip duplicates)
+      const sessions = Object.keys(folderMap).sort().map(folder => ({
+        folder,
+        files: folderMap[folder],
+        totalSize: folderMap[folder].reduce((sum, f) => sum + f.size, 0),
+      }));
+
+      if (sessions.length === 0) {
+        showMsg('No session folders (YYMMDD_HHMMSS) found in the selection.', 'error');
+        return;
+      }
+
+      // One session needs no choosing; several get a checklist
+      if (sessions.length === 1) {
+        queueSessions(sessions);
+      } else {
+        showChooser(sessions, strays);
+      }
+    }
+
+    function queueSessions(sessions) {
       let added = 0;
-      for (const [folder, files] of Object.entries(folderMap)) {
-        // Check if this folder is already queued
-        if (fileQueue.some(q => q.folder === folder)) {
-          showMsg(`"${folder}" is already in the queue.`, 'error');
+      for (const s of sessions) {
+        if (fileQueue.some(q => q.folder === s.folder)) {
+          showMsg(`"${s.folder}" is already in the queue.`, 'error');
           continue;
         }
-        const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-        fileQueue.push({ folder, files, totalSize });
+        fileQueue.push(s);
         added++;
       }
 
@@ -536,6 +601,78 @@
       }
 
       renderQueue();
+    }
+
+    // Session IDs already on the server, so the chooser can flag re-uploads.
+    // Best effort: without it the chooser just shows no flags.
+    let existingSessions = new Set();
+    fetch('/api/sessions?includeArchived=1')
+      .then(res => res.ok ? res.json() : [])
+      .then(list => { existingSessions = new Set(list.map(s => s.id)); })
+      .catch(() => {});
+
+    const chooserEl = document.getElementById('upload-chooser');
+
+    function showChooser(sessions, strays) {
+      const rows = sessions.map((s, idx) => {
+        const queued = fileQueue.some(q => q.folder === s.folder);
+        const uploaded = existingSessions.has(s.folder);
+        const note = queued ? 'in queue' : uploaded ? 'already uploaded' : '';
+        const sizeMB = (s.totalSize / 1024 / 1024).toFixed(0);
+        return `
+          <label class="chooser-row${queued ? ' disabled' : ''}">
+            <input type="checkbox" data-idx="${idx}" ${queued ? 'disabled' : uploaded ? '' : 'checked'}>
+            <span class="queue-folder">${s.folder}</span>
+            <span class="queue-count">${s.files.length} WAV files</span>
+            <span class="queue-size">${sizeMB} MB</span>
+            ${note ? `<span class="chooser-note">${note}</span>` : ''}
+          </label>
+        `;
+      }).join('');
+
+      chooserEl.innerHTML = `
+        <div class="chooser-head">
+          <span>Found ${sessions.length} sessions. Choose which to add:</span>
+          <span class="chooser-bulk">
+            <button type="button" data-bulk="all">All</button>
+            <button type="button" data-bulk="none">None</button>
+          </span>
+        </div>
+        ${rows}
+        ${strays ? `<p class="chooser-note">${strays} WAV file(s) outside a session folder were left out.</p>` : ''}
+        <div class="chooser-actions">
+          <button type="button" class="btn-upload-all" data-action="add"></button>
+          <button type="button" class="btn-clear-queue" data-action="cancel">Cancel</button>
+        </div>
+      `;
+      chooserEl.classList.remove('hidden');
+
+      const boxes = Array.from(chooserEl.querySelectorAll('input[type="checkbox"]:not(:disabled)'));
+      const addBtn = chooserEl.querySelector('[data-action="add"]');
+      const syncAddBtn = () => {
+        const n = boxes.filter(b => b.checked).length;
+        addBtn.textContent = `Add ${n} to queue`;
+        addBtn.disabled = n === 0;
+      };
+      boxes.forEach(b => b.addEventListener('change', syncAddBtn));
+      chooserEl.querySelectorAll('[data-bulk]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          boxes.forEach(b => { b.checked = btn.dataset.bulk === 'all'; });
+          syncAddBtn();
+        });
+      });
+      addBtn.addEventListener('click', () => {
+        const picked = boxes.filter(b => b.checked).map(b => sessions[b.dataset.idx]);
+        hideChooser();
+        queueSessions(picked);
+      });
+      chooserEl.querySelector('[data-action="cancel"]').addEventListener('click', hideChooser);
+      syncAddBtn();
+    }
+
+    function hideChooser() {
+      chooserEl.classList.add('hidden');
+      chooserEl.innerHTML = '';
     }
 
     function renderQueue() {
