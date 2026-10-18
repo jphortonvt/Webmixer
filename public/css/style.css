@@ -1017,7 +1017,8 @@ header h1 {
   position: absolute;
   bottom: 0;
   left: 0;
-  transform: scaleY(0);
+  /* ui.js drives --level; the phone layout swaps this for scaleX */
+  transform: scaleY(var(--level, 0));
   transform-origin: bottom;
   box-shadow: 0 0 4px var(--accent-glow);
 }
@@ -1872,5 +1873,137 @@ input[type="range"]::-webkit-slider-runnable-track {
 
   .song-title {
     font-size: 0.85rem;
+  }
+}
+
+/* Phones: each track is a full-width row with horizontal faders, so the
+   mixer scrolls vertically with the page instead of sideways. Comes after
+   the 768px block and overrides its vertical-strip sizing. */
+@media (max-width: 600px) {
+  #mixer {
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    overflow-x: hidden;
+  }
+
+  .channel-strip {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    gap: 6px 10px;
+  }
+
+  /* Hover lift reads as a stuck jump after a tap on touch screens */
+  .channel-strip:hover {
+    transform: none;
+  }
+
+  .channel-strip .track-number {
+    min-width: 22px;
+    text-align: center;
+  }
+
+  .channel-strip .track-name {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+    text-align: left;
+    font-size: 0.7rem;
+  }
+
+  .channel-buttons {
+    flex-wrap: nowrap;
+    margin-left: auto;
+  }
+
+  /* Volume and pan each take a full row: label, fader, value */
+  .volume-container,
+  .pan-container {
+    flex-basis: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .volume-container label,
+  .pan-container label {
+    width: 28px;
+    flex-shrink: 0;
+    font-size: 0.55rem;
+  }
+
+  .volume-value,
+  .pan-value {
+    width: 40px;
+    flex-shrink: 0;
+    text-align: right;
+    font-size: 0.7rem;
+  }
+
+  /* Fader with the VU meter as a thin bar underneath */
+  .fader-row {
+    flex: 1;
+    min-width: 0;
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    gap: 2px;
+    margin: 0;
+  }
+
+  /* Horizontal fader: 40px tall touch box, gradient paints the thin track.
+     pan-y lets a vertical swipe that starts on a fader scroll the page,
+     while a sideways drag still moves it. */
+  input[type="range"].volume-slider,
+  input[type="range"].pan-slider {
+    writing-mode: horizontal-tb;
+    direction: ltr;
+    width: 100%;
+    height: 40px;
+    padding: 15px 0;
+    touch-action: pan-y;
+    background-image: linear-gradient(
+      to bottom,
+      transparent 0 15px,
+      var(--slider-track) 15px 25px,
+      transparent 25px 100%
+    );
+  }
+
+  .pan-container input[type="range"].pan-slider {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .volume-slider::-webkit-slider-thumb {
+    width: 22px;
+    height: 30px;
+  }
+
+  .volume-slider::-moz-range-thumb {
+    width: 22px;
+    height: 30px;
+  }
+
+  .vu-meter-container {
+    width: 100%;
+    height: 4px;
+  }
+
+  .vu-meter-bar {
+    background: linear-gradient(to right,
+      #10b981 0%,
+      #10b981 60%,
+      #eab308 80%,
+      #f43f5e 100%
+    );
+    transform: scaleX(var(--level, 0));
+    transform-origin: left;
   }
 }

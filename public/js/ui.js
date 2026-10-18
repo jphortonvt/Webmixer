@@ -392,7 +392,7 @@ const UI = (() => {
       levels.forEach((level, i) => {
         const bar = document.getElementById(`vu-bar-${i}`);
         if (bar) {
-          bar.style.transform = `scaleY(${level})`;
+          bar.style.setProperty('--level', level);
         }
       });
 
@@ -406,7 +406,7 @@ const UI = (() => {
     activeRenderLoop = false;
     const bars = mixerEl.querySelectorAll('.vu-meter-bar');
     bars.forEach(bar => {
-      bar.style.transform = 'scaleY(0)';
+      bar.style.setProperty('--level', 0);
     });
   }
 
