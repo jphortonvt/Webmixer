@@ -1017,9 +1017,10 @@ header h1 {
   position: absolute;
   bottom: 0;
   left: 0;
-  /* ui.js drives --level; the phone layout swaps this for scaleX */
-  transform: scaleY(var(--level, 0));
-  transform-origin: bottom;
+  /* ui.js drives --level. Clipping (not scaling) keeps each colour at a
+     fixed height, so only a loud signal reaches the red. The phone layout
+     clips from the right instead. */
+  clip-path: inset(calc((1 - var(--level, 0)) * 100%) 0 0 0);
   box-shadow: 0 0 4px var(--accent-glow);
 }
 
@@ -1880,6 +1881,46 @@ input[type="range"]::-webkit-slider-runnable-track {
    mixer scrolls vertically with the page instead of sideways. Comes after
    the 768px block and overrides its vertical-strip sizing. */
 @media (max-width: 600px) {
+  /* The header would eat a fifth of the screen while scrolling the tracks;
+     let it scroll away and pin the transport instead, so play/pause and
+     the seek bar stay in reach. */
+  header {
+    position: static;
+  }
+
+  /* Filter and starred toggle share a row, the session picker gets a full
+     row (it was crushed to a few characters), session buttons share the
+     row below */
+  .session-filter {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  #session-select {
+    flex: 1 1 100%;
+  }
+
+  .session-selector #btn-star-session,
+  .session-selector #btn-edit-tags,
+  .session-selector #btn-archive-session,
+  .session-selector .btn-edit-name {
+    flex: 1 1 0;
+    height: 40px;
+  }
+
+  #transport {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    padding: 8px 12px;
+    gap: 6px 8px;
+  }
+
+  #transport button {
+    padding: 8px 12px;
+    min-height: 40px;
+  }
+
   #mixer {
     flex-direction: column;
     gap: 8px;
@@ -1887,16 +1928,18 @@ input[type="range"]::-webkit-slider-runnable-track {
     overflow-x: hidden;
   }
 
+  /* Top line: number, icon, name, M/S/T/B. Vol and Pan rows span it. */
   .channel-strip {
-    flex-direction: row;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr) auto;
     align-items: center;
+    column-gap: 10px;
+    row-gap: 2px;
     width: 100%;
     min-width: 0;
     min-height: 0;
     box-sizing: border-box;
-    padding: 10px 12px;
-    gap: 6px 10px;
+    padding: 10px 12px 4px;
   }
 
   /* Hover lift reads as a stuck jump after a tap on touch screens */
@@ -1906,94 +1949,143 @@ input[type="range"]::-webkit-slider-runnable-track {
 
   .channel-strip .track-number {
     min-width: 22px;
+    font-size: 1rem;
     text-align: center;
   }
 
+  .btn-track-icon {
+    width: 32px;
+    height: 32px;
+    margin: 0;
+  }
+
   .channel-strip .track-name {
-    flex: 1;
     min-width: 0;
     max-width: none;
     text-align: left;
-    font-size: 0.7rem;
+    font-size: 0.72rem;
   }
 
   .channel-buttons {
     flex-wrap: nowrap;
-    margin-left: auto;
   }
 
-  /* Volume and pan each take a full row: label, fader, value */
+  .btn-mute, .btn-solo, .btn-trim, .btn-boost {
+    height: 32px;
+  }
+
+  /* Label | fader | value, in the same columns on every row and track */
   .volume-container,
   .pan-container {
-    flex-basis: 100%;
-    flex-direction: row;
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) 40px;
     align-items: center;
-    gap: 8px;
+    column-gap: 8px;
+    width: 100%;
+    padding: 0;
   }
 
   .volume-container label,
   .pan-container label {
-    width: 28px;
-    flex-shrink: 0;
     font-size: 0.55rem;
   }
 
   .volume-value,
   .pan-value {
-    width: 40px;
-    flex-shrink: 0;
     text-align: right;
     font-size: 0.7rem;
   }
 
-  /* Fader with the VU meter as a thin bar underneath */
   .fader-row {
-    flex: 1;
-    min-width: 0;
-    flex-direction: column;
-    align-items: stretch;
-    height: auto;
-    gap: 2px;
+    position: relative;
+    display: block;
+    height: 40px;
     margin: 0;
   }
 
-  /* Horizontal fader: 40px tall touch box, gradient paints the thin track.
-     pan-y lets a vertical swipe that starts on a fader scroll the page,
-     while a sideways drag still moves it. */
+  /* 40px-tall touch box with a 6px track centred in it. pan-y lets a
+     vertical swipe that starts on a fader scroll the page, while a
+     sideways drag still moves it. */
   input[type="range"].volume-slider,
   input[type="range"].pan-slider {
     writing-mode: horizontal-tb;
     direction: ltr;
+    display: block;
     width: 100%;
     height: 40px;
-    padding: 15px 0;
+    margin: 0;
+    padding: 0;
+    background: none;
     touch-action: pan-y;
-    background-image: linear-gradient(
-      to bottom,
-      transparent 0 15px,
-      var(--slider-track) 15px 25px,
-      transparent 25px 100%
+  }
+
+  input[type="range"].volume-slider {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Volume's track is see-through: the VU meter underneath is the track */
+  input[type="range"].volume-slider::-webkit-slider-runnable-track {
+    height: 6px;
+    background: transparent;
+  }
+
+  input[type="range"].volume-slider::-moz-range-track {
+    height: 6px;
+    background: transparent;
+  }
+
+  /* Pan track with a centre tick */
+  input[type="range"].pan-slider::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right,
+      var(--slider-track) 0 calc(50% - 1px),
+      var(--text-secondary) calc(50% - 1px) calc(50% + 1px),
+      var(--slider-track) calc(50% + 1px) 100%
     );
   }
 
-  .pan-container input[type="range"].pan-slider {
-    flex: 1;
-    min-width: 0;
+  input[type="range"].pan-slider::-moz-range-track {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right,
+      var(--slider-track) 0 calc(50% - 1px),
+      var(--text-secondary) calc(50% - 1px) calc(50% + 1px),
+      var(--slider-track) calc(50% + 1px) 100%
+    );
   }
 
-  .volume-slider::-webkit-slider-thumb {
-    width: 22px;
-    height: 30px;
+  /* Fader caps: WebKit pins the thumb to the track's top edge, so pull it
+     up by half the difference to centre it: (6 - 24) / 2 = -9px */
+  .volume-slider::-webkit-slider-thumb,
+  .pan-slider::-webkit-slider-thumb {
+    width: 16px;
+    height: 24px;
+    margin-top: -9px;
+    border-radius: 5px;
   }
 
-  .volume-slider::-moz-range-thumb {
-    width: 22px;
-    height: 30px;
+  .volume-slider::-moz-range-thumb,
+  .pan-slider::-moz-range-thumb {
+    width: 13px;
+    height: 21px;
+    border-radius: 5px;
   }
 
+  /* The meter sits under the fader as its track, the same width as the
+     pan track below it */
   .vu-meter-container {
-    width: 100%;
-    height: 4px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    width: auto;
+    height: 6px;
+    margin-top: -3px;
+    border-radius: 3px;
+    pointer-events: none;
   }
 
   .vu-meter-bar {
@@ -2003,7 +2095,21 @@ input[type="range"]::-webkit-slider-runnable-track {
       #eab308 80%,
       #f43f5e 100%
     );
-    transform: scaleX(var(--level, 0));
-    transform-origin: left;
+    clip-path: inset(0 calc((1 - var(--level, 0)) * 100%) 0 0);
+  }
+
+  /* Unity tick: 100 on a 0–150 fader, along the thumb's travel */
+  .fader-row::after {
+    content: '';
+    position: absolute;
+    left: calc(8px + (100% - 16px) * 100 / 150 - 1px);
+    top: 50%;
+    width: 2px;
+    height: 14px;
+    margin-top: -7px;
+    border-radius: 1px;
+    background: var(--text-secondary);
+    opacity: 0.5;
+    pointer-events: none;
   }
 }

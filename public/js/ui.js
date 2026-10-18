@@ -75,6 +75,14 @@ const UI = (() => {
       }
     });
 
+    // Double-click (double-tap on phones) returns a fader to unity / centre
+    for (const [slider, home] of [[volSlider, 100], [panSlider, 0]]) {
+      slider.addEventListener('dblclick', () => {
+        slider.value = home;
+        slider.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    }
+
     // Mute button
     const muteBtn = strip.querySelector('.btn-mute');
     let muted = false;
