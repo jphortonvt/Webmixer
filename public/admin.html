@@ -261,8 +261,8 @@
     </div>
 
     <div class="upload-area" id="upload-area">
-      <p>Click to add a session folder</p>
-      <p class="upload-hint">Select folders containing WAV files (e.g., 251213_000100/TRACK01.WAV)</p>
+      <p>Drag session folders here, or click to pick one</p>
+      <p class="upload-hint">Drop several folders at once, or pick a parent folder to add every session inside it (e.g., 251213_000100/TRACK01.WAV)</p>
       <input type="file" class="upload-file-input" id="upload-input" webkitdirectory multiple>
     </div>
 
@@ -443,14 +443,58 @@
       uploadArea.classList.remove('dragover');
     });
 
-    uploadArea.addEventListener('drop', (e) => {
+    // Relative path of a queued file. Dropped files carry it in _relPath because
+    // the browser only fills webkitRelativePath for files picked via the input.
+    function relPathOf(f) {
+      return f._relPath || f.webkitRelativePath || f.name;
+    }
+
+    // Recursively collect files under a dropped FileSystemEntry.
+    async function collectEntryFiles(entry, out) {
+      if (entry.isFile) {
+        const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+        file._relPath = entry.fullPath.replace(/^\//, '');
+        out.push(file);
+      } else if (entry.isDirectory) {
+        const reader = entry.createReader();
+        // readEntries returns results in batches; keep reading until empty
+        while (true) {
+          const batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+          if (batch.length === 0) break;
+          for (const child of batch) await collectEntryFiles(child, out);
+        }
+      }
+    }
+
+    // Dropping lets you add many folders at once (the picker allows only one).
+    uploadArea.addEventListener('drop', async (e) => {
       e.preventDefault();
       uploadArea.classList.remove('dragover');
-      uploadInput.click();
+
+      // Grab entries synchronously — the DataTransfer is cleared after the first await
+      const entries = Array.from(e.dataTransfer.items || [])
+        .map(item => item.webkitGetAsEntry && item.webkitGetAsEntry())
+        .filter(Boolean);
+      if (entries.length === 0) return;
+
+      const files = [];
+      try {
+        for (const entry of entries) await collectEntryFiles(entry, files);
+      } catch (err) {
+        console.error('Failed to read dropped folders:', err);
+        showMsg('Could not read the dropped folders.', 'error');
+        return;
+      }
+      addFilesToQueue(files);
     });
 
     uploadInput.addEventListener('change', () => {
       const files = Array.from(uploadInput.files);
+      uploadInput.value = '';
+      addFilesToQueue(files);
+    });
+
+    function addFilesToQueue(files) {
       if (files.length === 0) return;
 
       // Filter to WAV files only
@@ -458,14 +502,13 @@
 
       if (wavFiles.length === 0) {
         showMsg('No WAV files found in the selected folder.', 'error');
-        uploadInput.value = '';
         return;
       }
 
       // Group by session folder
       const folderMap = {};
       for (const f of wavFiles) {
-        const filePath = f.webkitRelativePath || f.name;
+        const filePath = relPathOf(f);
         const parts = filePath.split('/');
         let folder = 'Unknown';
         for (const p of parts) {
@@ -492,9 +535,8 @@
         showMsg(`Added ${added} folder(s) to upload queue.`, 'success');
       }
 
-      uploadInput.value = '';
       renderQueue();
-    });
+    }
 
     function renderQueue() {
       if (fileQueue.length === 0) {
@@ -566,7 +608,7 @@
 
       for (let i = 0; i < allFiles.length; i++) {
         const file = allFiles[i];
-        const relPath = file.webkitRelativePath || file.name;
+        const relPath = relPathOf(file);
         const percent = Math.round((i / allFiles.length) * 100);
         progressBar.style.width = percent + '%';
         progressText.textContent = `Uploading ${i + 1}/${allFiles.length}: ${relPath}`;
