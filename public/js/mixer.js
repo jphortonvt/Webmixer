@@ -83,10 +83,12 @@ const Mixer = (() => {
       const analyserNode = ctx.createAnalyser();
       analyserNode.fftSize = 256;
 
-      sourceNode.connect(gainNode);
+      // Analyser is placed before the gain node so meters reflect the true
+      // signal level regardless of the volume (fader) setting.
+      sourceNode.connect(analyserNode);
+      analyserNode.connect(gainNode);
       gainNode.connect(panNode);
-      panNode.connect(analyserNode);
-      analyserNode.connect(ctx.destination);
+      panNode.connect(ctx.destination);
 
       return {
         name: t.name,
