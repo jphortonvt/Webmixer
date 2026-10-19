@@ -1795,6 +1795,8 @@ input[type="range"]::-webkit-slider-runnable-track {
   #seek-bar::-webkit-slider-thumb {
     width: 26px;
     height: 26px;
+    /* WebKit pins the thumb to the 6px track's top: (6 - 26) / 2 */
+    margin-top: -10px;
   }
 
   #seek-bar::-moz-range-thumb {
