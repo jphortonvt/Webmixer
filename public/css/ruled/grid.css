@@ -1,0 +1,65 @@
+/* Vendored from the Ruled design system (design-system@285755b, src/styles/grid.css). Update by re-copying; don't edit here. */
+/*
+ * Ruled grid. The rules between cells are the grid's background showing
+ * through a 1px gap, so every cell needs a background (Cell sets one) and every
+ * row must be filled: an empty track shows as a solid ink block.
+ */
+
+.r-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--r-grid-columns, 12), minmax(0, 1fr));
+  gap: var(--r-rule-width);
+  background: var(--r-grid-rule, var(--r-rule-color));
+  min-width: 0;
+}
+.r-grid[data-rule="soft"] { --r-grid-rule: var(--r-rule-color-soft); }
+.r-grid[data-framed] { border: var(--r-rule-width) solid var(--r-grid-rule, var(--r-rule-color)); }
+
+/* Cell */
+.r-cell {
+  min-width: 0;
+  padding: var(--r-cell-padding-md);
+  background: var(--r-color-paper);
+  color: var(--r-color-ink);
+}
+.r-cell[data-pad="none"] { padding: 0; }
+.r-cell[data-pad="sm"] { padding: var(--r-cell-padding-sm); }
+.r-cell[data-pad="lg"] { padding: var(--r-cell-padding-lg); }
+
+.r-cell[data-layout="stack"] { display: flex; flex-direction: column; gap: var(--r-space-md); }
+.r-cell[data-layout="split"] { display: flex; flex-direction: column; justify-content: space-between; gap: var(--r-space-lg); }
+.r-cell[data-layout="row"] { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--r-space-md); }
+
+.r-cell[data-tone="wash"] { background: var(--r-color-wash); }
+.r-cell[data-tone="tint"] { background: var(--r-color-tint); }
+.r-cell[data-tone="ink"] { background: var(--r-color-ink); color: var(--r-color-paper); }
+.r-cell[data-tone="ink"] :is(.r-label, .r-body, .r-body-lg, .r-unit) { color: color-mix(in srgb, var(--r-color-paper) 72%, var(--r-color-ink)); }
+.r-cell[data-tone="accent"] { background: var(--r-color-accent); color: var(--r-color-on-accent); }
+.r-cell[data-tone="accent"] :is(.r-label, .r-body, .r-body-lg, .r-unit) { color: var(--r-color-on-accent); }
+
+/* Interactive cells invert to ink on hover and keyboard focus. */
+.r-cell[data-interactive] {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--r-motion-duration-fast) var(--r-motion-easing-standard),
+    color var(--r-motion-duration-fast) var(--r-motion-easing-standard);
+}
+.r-cell[data-interactive][data-layout="stack"],
+.r-cell[data-interactive][data-layout="split"] { display: flex; }
+.r-cell[data-interactive][data-layout="row"] { display: flex; }
+.r-cell[data-interactive]:is(:hover, :focus-visible) { background: var(--r-color-ink); color: var(--r-color-paper); }
+.r-cell[data-interactive]:is(:hover, :focus-visible) * { color: var(--r-color-paper); }
+.r-cell[data-interactive]:is(:hover, :focus-visible) .r-media { background: color-mix(in srgb, var(--r-color-paper) 12%, var(--r-color-ink)); }
+.r-cell[data-interactive]:focus-visible { outline: 2px solid var(--r-color-accent); outline-offset: -4px; }
+
+/* Collapse to one column below the `breakpoint.collapse` token (900px). */
+@media (max-width: 899.98px) {
+  .r-grid:not([data-collapse="never"]) { grid-template-columns: minmax(0, 1fr); }
+  .r-grid:not([data-collapse="never"]) > * { grid-column: auto !important; grid-row: auto !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .r-cell[data-interactive], .r-button { transition: none; }
+}

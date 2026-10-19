@@ -1,0 +1,145 @@
+/* Vendored from the Ruled design system (design-system@285755b, src/styles/base.css). Update by re-copying; don't edit here. */
+/* Ruled base: page defaults, type roles and a few primitives (tag, button, input, media). */
+
+.r-page {
+  margin: 0;
+  font-family: var(--r-font-family-sans);
+  font-weight: var(--r-font-weight-regular);
+  color: var(--r-color-ink);
+  background: var(--r-color-paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.r-page *, .r-page *::before, .r-page *::after { box-sizing: border-box; }
+
+/* Type roles — one class per token in `type.*`. */
+.r-display-xl, .r-display, .r-heading, .r-title, .r-body-lg, .r-body, .r-label { margin: 0; }
+.r-display-xl {
+  font-family: var(--r-type-display-xl-font-family);
+  font-weight: var(--r-type-display-xl-font-weight);
+  font-size: clamp(56px, 8.5vw, var(--r-type-display-xl-font-size));
+  line-height: var(--r-type-display-xl-line-height);
+  letter-spacing: var(--r-type-display-xl-letter-spacing);
+}
+.r-display {
+  font-family: var(--r-type-display-font-family);
+  font-weight: var(--r-type-display-font-weight);
+  font-size: var(--r-type-display-font-size);
+  line-height: var(--r-type-display-line-height);
+  letter-spacing: var(--r-type-display-letter-spacing);
+}
+.r-heading {
+  font-family: var(--r-type-heading-font-family);
+  font-weight: var(--r-type-heading-font-weight);
+  font-size: var(--r-type-heading-font-size);
+  line-height: var(--r-type-heading-line-height);
+  letter-spacing: var(--r-type-heading-letter-spacing);
+}
+.r-title {
+  font-family: var(--r-type-title-font-family);
+  font-weight: var(--r-type-title-font-weight);
+  font-size: var(--r-type-title-font-size);
+  line-height: var(--r-type-title-line-height);
+  letter-spacing: var(--r-type-title-letter-spacing);
+}
+.r-body-lg {
+  font-family: var(--r-type-body-lg-font-family);
+  font-weight: var(--r-type-body-lg-font-weight);
+  font-size: var(--r-type-body-lg-font-size);
+  line-height: var(--r-type-body-lg-line-height);
+  color: var(--r-color-body);
+}
+.r-body {
+  font-family: var(--r-type-body-font-family);
+  font-weight: var(--r-type-body-font-weight);
+  font-size: var(--r-type-body-font-size);
+  line-height: var(--r-type-body-line-height);
+  color: var(--r-color-body);
+}
+.r-label {
+  font-family: var(--r-type-label-font-family);
+  font-weight: var(--r-type-label-font-weight);
+  font-size: var(--r-type-label-font-size);
+  line-height: var(--r-type-label-line-height);
+  letter-spacing: var(--r-type-label-letter-spacing);
+  text-transform: uppercase;
+  color: var(--r-color-muted);
+}
+.r-unit { font-size: var(--r-type-body-lg-font-size); font-weight: var(--r-font-weight-light); letter-spacing: 0; color: var(--r-color-muted); }
+
+/* Section tag: the numbered lime chip that opens a section label. */
+.r-tag {
+  display: inline-block;
+  margin-right: var(--r-space-sm);
+  padding: 3px 6px;
+  background: var(--r-color-accent);
+  color: var(--r-color-on-accent);
+}
+
+/* Brand mark */
+.r-mark {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  background: var(--r-color-accent);
+  outline: var(--r-rule-width) solid var(--r-color-ink);
+}
+
+/* Links */
+.r-link { color: inherit; text-underline-offset: 5px; text-decoration-thickness: var(--r-rule-width); }
+.r-link:hover { text-decoration-thickness: 2px; }
+
+/* Buttons. Square, 1px ink border. Primary is the only lime surface. */
+.r-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  height: var(--r-control-height);
+  padding: 0 var(--r-space-lg);
+  border: var(--r-rule-width) solid var(--r-color-ink);
+  border-radius: var(--r-radius-none);
+  background: var(--r-color-paper);
+  color: var(--r-color-ink);
+  font: inherit;
+  font-size: var(--r-type-body-font-size);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color var(--r-motion-duration-fast) var(--r-motion-easing-standard),
+    color var(--r-motion-duration-fast) var(--r-motion-easing-standard);
+}
+.r-button--primary { background: var(--r-color-accent); color: var(--r-color-on-accent); font-weight: var(--r-font-weight-medium); }
+.r-button:hover { background: var(--r-color-ink); color: var(--r-color-paper); }
+.r-button:focus-visible { outline: 2px solid var(--r-color-ink); outline-offset: 2px; }
+.r-button-group { display: inline-flex; flex-wrap: wrap; }
+.r-button-group > .r-button + .r-button { border-left: 0; }
+
+/* Input */
+.r-field { display: flex; flex-direction: column; gap: 10px; flex: 1 1 220px; }
+.r-input {
+  height: var(--r-control-height);
+  padding: 0 var(--r-space-md);
+  border: var(--r-rule-width) solid var(--r-color-ink);
+  border-radius: var(--r-radius-none);
+  background: var(--r-color-paper);
+  color: var(--r-color-ink);
+  font-family: var(--r-font-family-sans);
+  font-size: 16px;
+  font-weight: var(--r-font-weight-light);
+}
+.r-input:focus-visible { outline: 2px solid var(--r-color-ink); outline-offset: 2px; }
+.r-inline-form { display: flex; align-items: flex-end; flex-wrap: wrap; }
+.r-inline-form > .r-button { border-left: 0; }
+
+/* Media placeholder: lilac fill with a hairline X, at any aspect ratio. */
+.r-media {
+  display: block;
+  min-height: 160px;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 0.5px), var(--r-color-tint-strong) 50%, transparent calc(50% + 0.5px)),
+    linear-gradient(to bottom right, transparent calc(50% - 0.5px), var(--r-color-tint-strong) 50%, transparent calc(50% + 0.5px)),
+    var(--r-color-tint);
+}
+img.r-media, video.r-media { width: 100%; height: 100%; object-fit: cover; background: var(--r-color-tint); }
+
+/* Rows inside a cell (spec lists, tables) use the hairline, not the rule. */
+.r-rows > * + * { border-top: var(--r-rule-width) solid var(--r-color-hairline); }

@@ -1219,6 +1219,19 @@ input[type="range"]::-webkit-slider-runnable-track {
 
 .header-link.hidden { display: none; }
 
+/* Link to the v2 (Ruled) interface: last in the header row, so top right */
+.new-ui-link {
+  order: 99;
+  color: var(--accent);
+  border-color: var(--accent);
+  white-space: nowrap;
+}
+
+.new-ui-link:hover {
+  color: var(--on-accent);
+  background: var(--accent);
+}
+
 /* Seek bar container with comment markers */
 #seek-container {
   flex: 1;
@@ -1565,6 +1578,12 @@ input[type="range"]::-webkit-slider-runnable-track {
     align-items: stretch;
   }
 
+  .new-ui-link {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+  }
+
   header h1 {
     font-size: 1rem;
     text-align: center;
@@ -1886,8 +1905,9 @@ input[type="range"]::-webkit-slider-runnable-track {
   /* The header would eat a fifth of the screen while scrolling the tracks;
      let it scroll away and pin the transport instead, so play/pause and
      the seek bar stay in reach. */
+  /* relative, not static: still scrolls away, but anchors the New UI link */
   header {
-    position: static;
+    position: relative;
   }
 
   /* Filter and starred toggle share a row, the session picker gets a full
