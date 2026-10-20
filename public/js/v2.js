@@ -109,3 +109,27 @@
     if (e.relatedTarget && !menu.contains(e.relatedTarget) && e.relatedTarget !== btn) setOpen(false);
   });
 })();
+
+// Interface preference: the new UI is the default. index.html sends people
+// who chose Classic to /classic.html before it paints; anything marked
+// data-ui="v2" or data-ui="classic" records the choice (links, and the
+// New / Classic buttons on the sign-in page).
+(function () {
+  const KEY = 'traxx-ui';
+  const get = () => { try { return localStorage.getItem(KEY) || 'v2'; } catch (e) { return 'v2'; } };
+  const set = (value) => { try { localStorage.setItem(KEY, value); } catch (e) { /* private mode */ } };
+
+  function paint() {
+    document.querySelectorAll('button[data-ui]').forEach((b) => {
+      b.setAttribute('aria-pressed', String(b.dataset.ui === get()));
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-ui]');
+    if (!el) return;
+    set(el.dataset.ui);
+    paint();
+  });
+  paint();
+})();
