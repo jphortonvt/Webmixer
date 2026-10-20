@@ -13,6 +13,10 @@
   --mx-invert-fg: var(--r-color-paper);
   --mx-disabled: #9A9A9A;
   --mx-overlay: rgba(10, 10, 10, 0.35);
+  /* Meter: deep green into neon green into lime */
+  --mx-meter-low: #00A63E;
+  --mx-meter-mid: #39FF14;
+  --mx-meter-high: #CCFF00;
   --mx-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230A0A0A' stroke-width='1.6'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   --mx-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235C5C5C' stroke-width='1.6'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='M20 20l-4.5-4.5'/%3E%3C/svg%3E");
 }
@@ -39,6 +43,10 @@
   /* Lime and its ink text stay the same in both themes */
   --mx-disabled: #625A78;
   --mx-overlay: rgba(6, 3, 12, 0.7);
+  /* Meter: violet into bright lavender */
+  --mx-meter-low: #5B2EE0;
+  --mx-meter-mid: #8B5CF6;
+  --mx-meter-high: #D8C8FF;
   --mx-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23EEEBF5' stroke-width='1.6'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   --mx-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23A69CC0' stroke-width='1.6'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='M20 20l-4.5-4.5'/%3E%3C/svg%3E");
 }
@@ -62,6 +70,10 @@
     /* Lime and its ink text stay the same in both themes */
     --mx-disabled: #625A78;
     --mx-overlay: rgba(6, 3, 12, 0.7);
+    /* Meter: violet into bright lavender */
+    --mx-meter-low: #5B2EE0;
+    --mx-meter-mid: #8B5CF6;
+    --mx-meter-high: #D8C8FF;
     --mx-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23EEEBF5' stroke-width='1.6'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     --mx-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23A69CC0' stroke-width='1.6'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='M20 20l-4.5-4.5'/%3E%3C/svg%3E");
 }
@@ -71,15 +83,10 @@
   /* Names the shared scripts reference inline (playlist drag ghost) */
   --bg-surface: var(--r-color-paper);
   --accent: var(--r-color-ink);
-  /* Meters: ink body, lime when loud, pink at the top */
-  --mx-meter: linear-gradient(to top,
-    var(--r-color-ink) 0 70%,
-    var(--r-color-accent) 70% 90%,
-    var(--r-color-alt-pink) 90% 100%);
-  --mx-meter-h: linear-gradient(to right,
-    var(--r-color-ink) 0 70%,
-    var(--r-color-accent) 70% 90%,
-    var(--r-color-alt-pink) 90% 100%);
+  /* Meters brighten as the level rises. The bar is clipped, not scaled, so
+     only a loud signal reaches the bright end. Colours are per theme (:root). */
+  --mx-meter: linear-gradient(to top, var(--mx-meter-low) 0%, var(--mx-meter-mid) 60%, var(--mx-meter-high) 100%);
+  --mx-meter-h: linear-gradient(to right, var(--mx-meter-low) 0%, var(--mx-meter-mid) 60%, var(--mx-meter-high) 100%);
 
   min-height: 100vh;
 }
