@@ -92,7 +92,7 @@
 /* :where() keeps this at the specificity of .rv2 alone, so state rules
    like .tab-btn.active can still recolour it */
 .rv2 :where(.section-label, .mix-label, .range-label, .comments-header h3, .now-playing-label,
-  .playlist-section-header h2, .header-link, .tab-btn, .volume-container label, .pan-container label,
+  .playlist-section-header h2, .tab-btn, .volume-container label, .pan-container label,
   .modal-field label, #loading) {
   font-family: var(--r-font-family-mono);
   font-size: var(--r-type-label-font-size);
@@ -112,12 +112,13 @@
   border-bottom: var(--r-rule-width) solid var(--r-rule-color);
 }
 
-/* ---------- Header ---------- */
+/* ---------- Line 1: brand, theme toggle, account ---------- */
 
-/* One slim row of cells. Dividers are inset shadows rather than grid gaps,
-   so a hidden cell (session tools on the Playlist tab) never leaves a hole,
-   and a button's own border reset can't erase its divider. */
+/* Dividers are inset shadows rather than grid gaps, so a hidden cell never
+   leaves a hole and a button's own border reset can't erase its divider. */
 .app-header {
+  position: relative;
+  z-index: 50; /* the account menu opens over the sticky transport */
   display: flex;
   align-items: stretch;
   min-height: 52px;
@@ -126,7 +127,7 @@
 .app-header > * { display: flex; align-items: center; min-width: 0; }
 .app-header > * + * { box-shadow: inset var(--r-rule-width) 0 0 var(--r-rule-color); }
 
-.brand { flex: 0 0 auto; gap: 10px; padding: 0 20px; background: var(--r-color-wash); }
+.brand { flex: 1 1 auto; gap: 10px; padding: 0 20px; background: var(--r-color-wash); }
 .brand h1 {
   margin: 0;
   font-family: var(--r-font-family-mono);
@@ -138,50 +139,10 @@
   text-overflow: ellipsis;
 }
 
-.session-selector { flex: 3 1 auto; align-items: stretch; }
-.session-selector > * { border: 0; border-radius: 0; background-color: var(--r-color-paper); color: var(--r-color-ink); }
-.session-selector > * + * { box-shadow: inset var(--r-rule-width) 0 0 var(--r-color-hairline); }
-.session-filter {
-  flex: 0 1 170px;
-  min-width: 110px;
-  padding: 0 12px 0 34px;
-  font-size: 14px;
-  font-weight: var(--r-font-weight-light);
-  background: var(--r-color-paper) var(--mx-search) no-repeat 12px center;
-}
-.session-filter::placeholder { color: var(--r-color-muted); }
-#session-select {
-  flex: 1 1 200px;
-  min-width: 0;
-  padding: 0 34px 0 14px;
-  font-size: 14px;
-  appearance: none;
-  -webkit-appearance: none;
-  background: var(--r-color-paper) var(--mx-chevron) no-repeat right 12px center;
-  cursor: pointer;
-}
-#session-select:disabled { color: var(--r-color-muted); cursor: default; }
-.btn-icon, .btn-edit-name {
-  flex: 0 0 44px;
+.theme-toggle, .user-menu-btn, .classic-link {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  cursor: pointer;
-  transition: background-color var(--r-motion-duration-fast), color var(--r-motion-duration-fast);
-}
-.btn-icon svg, .btn-edit-name svg { width: 14px; height: 14px; }
-.btn-icon:hover, .btn-edit-name:hover { background-color: var(--mx-invert-bg); color: var(--mx-invert-fg); }
-.btn-icon.active { background-color: var(--r-color-accent); color: var(--r-color-on-accent); }
-
-.user-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.user-avatar-small { width: 22px; height: 22px; border: var(--r-rule-width) solid var(--r-color-ink); object-fit: cover; filter: grayscale(1); }
-#user-name { max-width: 140px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.header-link { font-size: 11px; text-decoration: none; white-space: nowrap; }
-.header-link:hover { color: var(--r-color-ink); text-decoration: underline; text-underline-offset: 4px; }
-
-.theme-toggle, .classic-link {
-  flex: 0 0 auto;
   justify-content: center;
   border: 0;
   border-radius: 0;
@@ -191,9 +152,7 @@
   transition: background-color var(--r-motion-duration-fast), color var(--r-motion-duration-fast);
 }
 .theme-toggle { width: 52px; }
-/* Pinned right even when app.js hides the session tools (Playlist tab) */
-.app-header > .theme-toggle { margin-left: auto; }
-.theme-toggle:hover, .classic-link:hover { background: var(--mx-invert-bg); color: var(--mx-invert-fg); }
+.theme-toggle:hover, .user-menu-btn:hover, .user-menu-btn[aria-expanded="true"], .classic-link:hover { background: var(--mx-invert-bg); color: var(--mx-invert-fg); }
 /* Show the moon in light mode and the sun in dark mode */
 .theme-toggle .icon-sun { display: none; }
 :root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
@@ -203,23 +162,55 @@
   :root:not([data-theme="light"]) .theme-toggle .icon-moon { display: none; }
 }
 
-/* Way back to the original UI: always the top-right cell */
-.classic-link {
-  gap: 8px;
-  padding: 0 16px;
-  text-decoration: none;
-  white-space: nowrap;
-  font-family: var(--r-font-family-mono);
-  font-size: 11px;
-  letter-spacing: var(--r-type-label-letter-spacing);
-  text-transform: uppercase;
+/* Account: the avatar opens a small menu with the name, Admin and Logout */
+.user-info { position: relative; align-items: stretch !important; }
+.user-menu-btn { width: 56px; height: 100%; padding: 0; }
+.user-avatar-small { width: 26px; height: 26px; border: var(--r-rule-width) solid var(--r-color-ink); object-fit: cover; filter: grayscale(1); }
+/* auth.js hides the image when there is no picture; show a glyph instead */
+.user-fallback { display: none; }
+.user-avatar-small[style*="none"] + .user-fallback { display: block; }
+
+.user-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  background: var(--r-color-paper);
+  border: var(--r-rule-width) solid var(--r-rule-color);
 }
+.user-menu[hidden] { display: none; }
+.user-menu-name {
+  padding: 14px 16px;
+  border-bottom: var(--r-rule-width) solid var(--r-color-hairline);
+  font-family: var(--r-font-family-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--r-color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  color: var(--r-color-ink);
+  text-decoration: none;
+  font-size: 14px;
+}
+/* Divider only when Admin is showing (it is hidden for non-admins) */
+.user-menu-item:not(.hidden) + .user-menu-item { border-top: var(--r-rule-width) solid var(--r-color-hairline); }
+.user-menu-item:hover, .user-menu-item:focus-visible { background: var(--mx-invert-bg); color: var(--mx-invert-fg); }
 
-/* ---------- Second line: tabs, then the signed-in user ---------- */
+/* ---------- Line 2: views ---------- */
 
-.sub-bar { display: flex; align-items: stretch; min-height: 48px; background: var(--r-color-paper); }
-.sub-bar > * + * { box-shadow: inset var(--r-rule-width) 0 0 var(--r-rule-color); }
-.tab-bar { display: flex; flex: 1 1 auto; min-width: 0; }
+/* Directly under line 1 on every view and screen size, so switching between
+   Mixer and Playlist never moves the tabs */
+.tab-bar { display: flex; min-height: 48px; background: var(--r-color-paper); }
 .tab-btn {
   flex: 0 0 160px;
   padding: 0 var(--r-space-lg);
@@ -234,9 +225,62 @@
 .tab-btn:hover { background: var(--r-color-wash); color: var(--r-color-ink); }
 .tab-btn.active { background: var(--mx-invert-bg); color: var(--mx-invert-fg); }
 
-.header-user { display: flex; align-items: center; flex: 0 0 auto; justify-content: flex-end; gap: 14px; padding: 0 16px; }
-
 .tab-content { display: flex; flex-direction: column; gap: var(--r-rule-width); background: var(--r-rule-color); }
+
+/* ---------- Session tools (top of the Mixer view) ---------- */
+
+.session-selector { display: flex; align-items: stretch; min-height: 48px; background: var(--r-color-paper); }
+.session-selector > * { border: 0; border-radius: 0; background-color: var(--r-color-paper); color: var(--r-color-ink); }
+.session-selector > * + * { box-shadow: inset var(--r-rule-width) 0 0 var(--r-color-hairline); }
+.session-filter {
+  flex: 0 1 220px;
+  min-width: 120px;
+  padding: 0 12px 0 34px;
+  font-size: 14px;
+  font-weight: var(--r-font-weight-light);
+  background: var(--r-color-paper) var(--mx-search) no-repeat 12px center;
+}
+.session-filter::placeholder { color: var(--r-color-muted); }
+#session-select {
+  flex: 1 1 240px;
+  min-width: 0;
+  padding: 0 34px 0 16px;
+  font-size: 14px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--r-color-paper) var(--mx-chevron) no-repeat right 14px center;
+  cursor: pointer;
+}
+#session-select:disabled { color: var(--r-color-muted); cursor: default; }
+.btn-icon, .btn-edit-name {
+  flex: 0 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background-color var(--r-motion-duration-fast), color var(--r-motion-duration-fast);
+}
+.btn-icon svg, .btn-edit-name svg { width: 14px; height: 14px; }
+.btn-icon:hover, .btn-edit-name:hover { background-color: var(--mx-invert-bg); color: var(--mx-invert-fg); }
+.btn-icon.active { background-color: var(--r-color-accent); color: var(--r-color-on-accent); }
+
+/* ---------- Footer ---------- */
+
+.app-footer { display: flex; align-items: stretch; justify-content: space-between; min-height: 48px; background: var(--r-color-paper); }
+.footer-note { display: flex; align-items: center; padding: 0 var(--r-space-lg); font-family: var(--r-font-family-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--r-color-muted); }
+/* Way back to the original UI */
+.classic-link {
+  gap: 8px;
+  padding: 0 20px;
+  box-shadow: inset var(--r-rule-width) 0 0 var(--r-rule-color);
+  text-decoration: none;
+  white-space: nowrap;
+  font-family: var(--r-font-family-mono);
+  font-size: 11px;
+  letter-spacing: var(--r-type-label-letter-spacing);
+  text-transform: uppercase;
+}
 
 /* ---------- Transport ---------- */
 
@@ -882,27 +926,19 @@
 /* ---------- Below 900px: stack the page grids ---------- */
 
 @media (max-width: 899.98px) {
-  /* Brand, theme toggle and Classic link share the top row; the rest
-     stack as full-width rows (a hidden row just disappears) */
-  .app-header { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--r-rule-width); background: var(--r-rule-color); }
-  .app-header > * { grid-column: 1 / -1; min-height: 48px; background-color: var(--r-color-paper); }
-  .app-header > * + * { box-shadow: none; }
-  .brand { grid-column: 1; grid-row: 1; background-color: var(--r-color-wash); }
-  .app-header > .theme-toggle { grid-column: 2; grid-row: 1; }
-  .app-header > .classic-link { grid-column: 3; grid-row: 1; }
+  .brand { padding: 0 16px; }
 
   /* Session tools: filter + starred, then the picker, then the four
      session buttons (app.js shows and hides those four together).
-     No !important here: app.js hides this row with an inline style. */
-  .app-header .session-selector { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--r-rule-width); background: var(--r-color-hairline); }
+     No !important: app.js hides this row with an inline style. */
+  .session-selector { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--r-rule-width); background: var(--r-color-hairline); }
   .session-selector > * { min-height: 48px; }
   .session-selector > * + * { box-shadow: none; }
   .session-filter { grid-column: span 3; }
   #session-select { grid-column: 1 / -1; }
 
   .tab-btn { flex: 1 1 0; padding: 0 var(--r-space-md); }
-  .header-user { gap: 10px; padding: 0 12px; }
-  #user-name { display: none; }
+  .footer-note { padding: 0 var(--r-space-md); }
 
   #mix-actions { grid-template-columns: minmax(0, 1fr); }
 

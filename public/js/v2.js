@@ -77,3 +77,35 @@
   new MutationObserver(onMutations).observe(document.body, { childList: true });
   scan(document.body);
 })();
+
+// Account menu: the avatar button discloses the name, Admin and Logout.
+(function () {
+  const btn = document.getElementById('user-menu-btn');
+  const menu = document.getElementById('user-menu');
+  if (!btn || !menu) return;
+
+  function setOpen(open, { focusFirst = false, returnFocus = false } = {}) {
+    menu.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+    if (open && focusFirst) {
+      const first = menu.querySelector('a:not(.hidden)');
+      if (first) first.focus();
+    } else if (!open && returnFocus) {
+      btn.focus();
+    }
+  }
+
+  // detail === 0 means a keyboard press, so move focus into the menu
+  btn.addEventListener('click', (e) => setOpen(menu.hidden, { focusFirst: e.detail === 0 }));
+
+  document.addEventListener('click', (e) => {
+    if (!menu.hidden && !menu.contains(e.target) && !btn.contains(e.target)) setOpen(false);
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !menu.hidden) setOpen(false, { returnFocus: true });
+  });
+  // Tabbing out of the menu closes it
+  menu.addEventListener('focusout', (e) => {
+    if (e.relatedTarget && !menu.contains(e.relatedTarget) && e.relatedTarget !== btn) setOpen(false);
+  });
+})();

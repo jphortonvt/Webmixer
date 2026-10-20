@@ -31,6 +31,30 @@
         <span class="r-mark" aria-hidden="true"></span>
         <h1>TRAXXXXXXXXS</h1>
       </div>
+      <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+        <svg class="icon-moon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>
+        <svg class="icon-sun" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      </button>
+      <div id="user-info" class="user-info hidden">
+        <button type="button" id="user-menu-btn" class="user-menu-btn" aria-expanded="false" aria-controls="user-menu" aria-label="Account">
+          <img id="user-avatar" class="user-avatar-small" src="" alt="" referrerpolicy="no-referrer">
+          <svg class="user-fallback" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+        </button>
+        <div id="user-menu" class="user-menu" hidden>
+          <span id="user-name" class="user-menu-name"></span>
+          <a href="/admin.html" id="admin-link" class="user-menu-item hidden">Admin</a>
+          <a href="/auth/logout" class="user-menu-item">Logout</a>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tab-bar" aria-label="Views">
+      <button class="tab-btn active" data-tab="mixer">Mixer</button>
+      <button class="tab-btn" data-tab="playlist">Playlist</button>
+    </nav>
+
+    <!-- ===== MIXER TAB ===== -->
+    <main id="tab-mixer" class="tab-content">
       <div class="session-selector" id="session-selector-wrap">
         <input type="search" id="session-filter" class="session-filter" placeholder="Filter or #tag" autocomplete="off" aria-label="Filter sessions or #tags">
         <button id="btn-filter-starred" class="btn-icon btn-filter-starred" title="Show only starred sessions" aria-pressed="false">&#9734;</button>
@@ -46,33 +70,6 @@
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4"/></svg>
         </button>
       </div>
-      <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
-        <svg class="icon-moon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>
-        <svg class="icon-sun" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
-      </button>
-      <a href="/" class="classic-link" title="Switch to the original interface">
-        Classic UI
-        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7 17L17 7M8 7h9v9"/></svg>
-      </a>
-    </header>
-
-    <div class="sub-bar">
-      <nav class="tab-bar" aria-label="Views">
-        <button class="tab-btn active" data-tab="mixer">Mixer</button>
-        <button class="tab-btn" data-tab="playlist">Playlist</button>
-      </nav>
-      <div class="header-user">
-        <div id="user-info" class="user-info hidden">
-          <img id="user-avatar" class="user-avatar-small" src="" alt="" referrerpolicy="no-referrer">
-          <span id="user-name"></span>
-          <a href="/admin.html" id="admin-link" class="header-link hidden">Admin</a>
-          <a href="/auth/logout" class="header-link">Logout</a>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===== MIXER TAB ===== -->
-    <main id="tab-mixer" class="tab-content">
       <div id="transport">
         <button id="btn-play" disabled>
           <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8z"/></svg>Play
@@ -227,6 +224,14 @@
 
       </div>
     </main>
+
+    <footer class="app-footer">
+      <span class="footer-note">TRAXXXXXXXXS · v2</span>
+      <a href="/" class="classic-link" title="Switch to the original interface">
+        Classic UI
+        <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M7 17L17 7M8 7h9v9"/></svg>
+      </a>
+    </footer>
 
   </div>
 
