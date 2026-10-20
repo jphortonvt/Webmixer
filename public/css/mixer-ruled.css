@@ -22,8 +22,55 @@
     var(--r-color-accent) 70% 90%,
     var(--r-color-alt-pink) 90% 100%);
   --mx-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230A0A0A' stroke-width='1.6'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  --mx-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235C5C5C' stroke-width='1.6'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='M20 20l-4.5-4.5'/%3E%3C/svg%3E");
+  --mx-overlay: rgba(10, 10, 10, 0.35);
 
   min-height: 100vh;
+}
+
+/* ---------- Dark theme ----------
+ * Remaps the Ruled tokens. Follows the system setting unless the header
+ * toggle saved a choice (data-theme on <html>). Hover and "on" states use
+ * ink-on-paper inversion, so they flip with the theme automatically. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --r-color-ink: #EDEDEA;
+  --r-color-paper: #0F0F12;
+  --r-color-wash: #17151E;
+  --r-color-tint: #2B2542;
+  --r-color-tint-strong: #5B4F86;
+  --r-color-hairline: #2A2733;
+  --r-color-muted: #9C9AA6;
+  --r-color-body: #C9C8D0;
+  /* Rules soften in the dark: full-white 1px lines would buzz */
+  --r-rule-color: #46444E;
+  --r-rule-color-soft: #2A2733;
+  /* Lime and its ink text are the same in both themes */
+  --mx-disabled: #5E5C66;
+  --mx-overlay: rgba(0, 0, 0, 0.6);
+  --mx-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23EDEDEA' stroke-width='1.6'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  --mx-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239C9AA6' stroke-width='1.6'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='M20 20l-4.5-4.5'/%3E%3C/svg%3E");
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --r-color-ink: #EDEDEA;
+    --r-color-paper: #0F0F12;
+    --r-color-wash: #17151E;
+    --r-color-tint: #2B2542;
+    --r-color-tint-strong: #5B4F86;
+    --r-color-hairline: #2A2733;
+    --r-color-muted: #9C9AA6;
+    --r-color-body: #C9C8D0;
+    /* Rules soften in the dark: full-white 1px lines would buzz */
+    --r-rule-color: #46444E;
+    --r-rule-color-soft: #2A2733;
+    /* Lime and its ink text are the same in both themes */
+    --mx-disabled: #5E5C66;
+    --mx-overlay: rgba(0, 0, 0, 0.6);
+    --mx-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23EDEDEA' stroke-width='1.6'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    --mx-search: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239C9AA6' stroke-width='1.6'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='M20 20l-4.5-4.5'/%3E%3C/svg%3E");
+}
 }
 
 .rv2 .hidden { display: none !important; }
@@ -56,19 +103,23 @@
 
 /* ---------- Header ---------- */
 
+/* One slim row of cells. Dividers are inset shadows rather than grid gaps,
+   so a hidden cell (session tools on the Playlist tab) never leaves a hole,
+   and a button's own border reset can't erase its divider. */
 .app-header {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--r-rule-width);
-  background: var(--r-rule-color);
+  display: flex;
+  align-items: stretch;
+  min-height: 52px;
+  background: var(--r-color-paper);
 }
-.app-header > * { background: var(--r-color-paper); min-height: 64px; display: flex; align-items: center; }
+.app-header > * { display: flex; align-items: center; min-width: 0; }
+.app-header > * + * { box-shadow: inset var(--r-rule-width) 0 0 var(--r-rule-color); }
 
-.brand { grid-column: 1 / 4; gap: 12px; padding: 0 var(--r-space-lg); background: var(--r-color-wash) !important; }
+.brand { flex: 0 0 auto; gap: 10px; padding: 0 20px; background: var(--r-color-wash); }
 .brand h1 {
   margin: 0;
   font-family: var(--r-font-family-mono);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.14em;
   white-space: nowrap;
@@ -76,70 +127,82 @@
   text-overflow: ellipsis;
 }
 
-.session-selector {
-  grid-column: 4 / 9;
-  align-items: stretch !important;
-  gap: var(--r-rule-width);
-  background: var(--r-rule-color) !important;
-}
-.session-selector > * { background: var(--r-color-paper); border: 0; border-radius: 0; color: var(--r-color-ink); }
+.session-selector { flex: 3 1 auto; align-items: stretch; }
+.session-selector > * { border: 0; border-radius: 0; background-color: var(--r-color-paper); color: var(--r-color-ink); }
+.session-selector > * + * { box-shadow: inset var(--r-rule-width) 0 0 var(--r-color-hairline); }
 .session-filter {
-  flex: 1 1 160px;
-  min-width: 0;
-  padding: 0 var(--r-space-md);
-  font-size: 15px;
+  flex: 0 1 170px;
+  min-width: 110px;
+  padding: 0 12px 0 34px;
+  font-size: 14px;
   font-weight: var(--r-font-weight-light);
+  background: var(--r-color-paper) var(--mx-search) no-repeat 12px center;
 }
 .session-filter::placeholder { color: var(--r-color-muted); }
 #session-select {
-  flex: 2 1 220px;
+  flex: 1 1 200px;
   min-width: 0;
-  padding: 0 40px 0 var(--r-space-md);
-  font-size: 15px;
+  padding: 0 34px 0 14px;
+  font-size: 14px;
   appearance: none;
   -webkit-appearance: none;
-  background: var(--r-color-paper) var(--mx-chevron) no-repeat right 16px center;
+  background: var(--r-color-paper) var(--mx-chevron) no-repeat right 12px center;
   cursor: pointer;
 }
 #session-select:disabled { color: var(--r-color-muted); cursor: default; }
 .btn-icon, .btn-edit-name {
-  flex: 0 0 52px;
+  flex: 0 0 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 15px;
   cursor: pointer;
   transition: background-color var(--r-motion-duration-fast), color var(--r-motion-duration-fast);
 }
-.btn-icon:hover, .btn-edit-name:hover { background: var(--r-color-ink); color: var(--r-color-paper); }
-.btn-icon.active { background: var(--r-color-accent); color: var(--r-color-on-accent); }
+.btn-icon svg, .btn-edit-name svg { width: 14px; height: 14px; }
+.btn-icon:hover, .btn-edit-name:hover { background-color: var(--r-color-ink); color: var(--r-color-paper); }
+.btn-icon.active { background-color: var(--r-color-accent); color: var(--r-color-on-accent); }
 
-.header-user { grid-column: 9 / 12; justify-content: flex-end; gap: var(--r-space-md); padding: 0 var(--r-space-lg); }
-/* app.js hides the session picker (inline display:none) on the Playlist tab;
-   the user cell takes over its columns so no track is left empty */
-.app-header:has(#session-selector-wrap[style*="none"]) .header-user { grid-column: 4 / 12; }
+/* Takes leftover width, so the row still spans when the session tools hide */
+.header-user { flex: 1 0 auto; justify-content: flex-end; gap: 14px; padding: 0 16px; }
+.user-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.user-avatar-small { width: 22px; height: 22px; border: var(--r-rule-width) solid var(--r-color-ink); object-fit: cover; filter: grayscale(1); }
+#user-name { max-width: 140px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.header-link { font-size: 11px; text-decoration: none; white-space: nowrap; }
+.header-link:hover { color: var(--r-color-ink); text-decoration: underline; text-underline-offset: 4px; }
+
+.theme-toggle, .classic-link {
+  flex: 0 0 auto;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: var(--r-color-paper);
+  color: var(--r-color-ink);
+  cursor: pointer;
+  transition: background-color var(--r-motion-duration-fast), color var(--r-motion-duration-fast);
+}
+.theme-toggle { width: 52px; }
+.theme-toggle:hover, .classic-link:hover { background: var(--r-color-ink); color: var(--r-color-paper); }
+/* Show the moon in light mode and the sun in dark mode */
+.theme-toggle .icon-sun { display: none; }
+:root[data-theme="dark"] .theme-toggle .icon-sun { display: block; }
+:root[data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-toggle .icon-sun { display: block; }
+  :root:not([data-theme="light"]) .theme-toggle .icon-moon { display: none; }
+}
 
 /* Way back to the original UI: always the top-right cell */
 .classic-link {
-  grid-column: 12 / 13;
-  justify-content: center;
   gap: 8px;
-  padding: 0 var(--r-space-md);
-  color: var(--r-color-ink);
+  padding: 0 16px;
   text-decoration: none;
   white-space: nowrap;
   font-family: var(--r-font-family-mono);
-  font-size: var(--r-type-label-font-size);
+  font-size: 11px;
   letter-spacing: var(--r-type-label-letter-spacing);
   text-transform: uppercase;
-  transition: background-color var(--r-motion-duration-fast), color var(--r-motion-duration-fast);
 }
-.classic-link:hover { background: var(--r-color-ink) !important; color: var(--r-color-paper); }
-.user-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.user-avatar-small { width: 28px; height: 28px; border: var(--r-rule-width) solid var(--r-color-ink); object-fit: cover; filter: grayscale(1); }
-#user-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.header-link { text-decoration: none; white-space: nowrap; }
-.header-link:hover { color: var(--r-color-ink); text-decoration: underline; text-underline-offset: 4px; }
 
 /* ---------- Tabs ---------- */
 
@@ -437,27 +500,61 @@
 
 /* ---------- Mix actions ---------- */
 
-#mix-actions { display: flex; flex-wrap: wrap; gap: var(--r-rule-width); background: var(--r-rule-color); }
-/* Every item grows, so a wrapped line never leaves a bare stretch of rule colour */
-#mix-actions > * {
-  flex: 1 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 52px;
-  padding: 0 20px;
-  background: var(--r-color-paper);
+/* Two groups on one ruled row: save/export, and the mixdown range.
+   Each group is a label cell that stretches, then fixed-width buttons. */
+#mix-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--r-rule-width);
+  background: var(--r-rule-color);
 }
-#mix-actions > .mix-label { justify-content: flex-start; background: var(--r-color-wash); }
-#mix-actions > .mix-actions-sep { flex: 100 1 0; padding: 0; }
-#mix-actions button { border: 0; border-radius: 0; color: var(--r-color-ink); font-size: 14px; cursor: pointer; }
-#mix-actions button:hover:not(:disabled) { background: var(--r-color-ink); color: var(--r-color-paper); }
+.mix-group { display: flex; align-items: stretch; min-width: 0; background: var(--r-color-paper); }
+.mix-group > * { display: flex; align-items: center; min-height: 52px; padding: 0 18px; }
+.mix-group > * + * { box-shadow: inset var(--r-rule-width) 0 0 var(--r-color-hairline); }
+.mix-head { flex: 1 1 auto; justify-content: space-between; gap: 12px; min-width: 0; background: var(--r-color-wash); }
+.mix-label { padding: 0; background: none; }
+
+#mix-actions button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 0;
+  background-color: var(--r-color-paper);
+  color: var(--r-color-ink);
+  font-size: 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--r-motion-duration-fast), color var(--r-motion-duration-fast);
+}
+/* Export is the weightier of the two, but lime stays reserved for Play */
+#mix-actions #btn-export-mix { background-color: var(--r-color-ink); color: var(--r-color-paper); }
+#mix-actions button:hover:not(:disabled) { background-color: var(--r-color-ink); color: var(--r-color-paper); }
+#mix-actions #btn-export-mix:hover { background-color: var(--r-color-body); }
 #mix-actions button:disabled { color: var(--mx-disabled); cursor: not-allowed; }
-.range-display { font-family: var(--r-font-family-mono); font-size: 13px; color: var(--r-color-muted); }
-.range-display.is-set { background: var(--r-color-tint) !important; color: var(--r-color-ink); }
-/* Fade the text, not the cell: a transparent cell would show the rule colour */
-#mix-status { font-family: var(--r-font-family-mono); font-size: 12px; color: transparent; transition: color 0.3s; }
-#mix-status.visible { color: var(--r-color-ink); }
+
+.range-display {
+  padding: 3px 8px;
+  font-family: var(--r-font-family-mono);
+  font-size: 12px;
+  color: var(--r-color-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.range-display.is-set { background: var(--r-color-tint); color: var(--r-color-ink); }
+
+/* Fade the text, not the cell */
+#mix-status {
+  font-family: var(--r-font-family-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.3s;
+}
+#mix-status.visible, #mix-status:not(:empty) { color: var(--r-color-ink); }
 
 /* ---------- Comments ---------- */
 
@@ -561,7 +658,7 @@
   align-items: center;
   justify-content: center;
   padding: var(--r-space-md);
-  background: rgba(10, 10, 10, 0.35);
+  background: var(--mx-overlay);
 }
 .modal-content {
   display: flex;
@@ -750,21 +847,27 @@
 /* ---------- Below 900px: stack the page grids ---------- */
 
 @media (max-width: 899.98px) {
-  /* Brand and the Classic link share the top row; everything else spans */
-  .app-header { grid-template-columns: minmax(0, 1fr) auto; }
-  .app-header > * { grid-column: 1 / -1; }
-  .brand { grid-column: 1; grid-row: 1; min-height: 52px; }
-  .app-header > .classic-link { grid-column: 2; grid-row: 1; }
+  /* Brand, theme toggle and Classic link share the top row; the rest
+     stack as full-width rows (a hidden row just disappears) */
+  .app-header { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--r-rule-width); background: var(--r-rule-color); }
+  .app-header > * { grid-column: 1 / -1; min-height: 48px; background-color: var(--r-color-paper); }
+  .app-header > * + * { box-shadow: none; }
+  .brand { grid-column: 1; grid-row: 1; background-color: var(--r-color-wash); }
+  .app-header > .theme-toggle { grid-column: 2; grid-row: 1; }
+  .app-header > .classic-link { grid-column: 3; grid-row: 1; }
 
   /* Session tools: filter + starred, then the picker, then the four
-     session buttons (app.js shows and hides those four together) */
-  .session-selector { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .session-selector > * { min-height: 52px; }
+     session buttons (app.js shows and hides those four together).
+     No !important here: app.js hides this row with an inline style. */
+  .app-header .session-selector { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--r-rule-width); background: var(--r-color-hairline); }
+  .session-selector > * { min-height: 48px; }
+  .session-selector > * + * { box-shadow: none; }
   .session-filter { grid-column: span 3; }
   #session-select { grid-column: 1 / -1; }
-  .btn-icon, .btn-edit-name { width: auto; }
 
-  .header-user { justify-content: space-between; min-height: 52px; }
+  .header-user { justify-content: space-between; }
+
+  #mix-actions { grid-template-columns: minmax(0, 1fr); }
 
   .tab-bar { grid-template-columns: 1fr 1fr; }
   .tab-btn { grid-column: auto; }
@@ -880,7 +983,11 @@
     pointer-events: none;
   }
 
-  #mix-actions > * { min-height: 48px; padding: 0 14px; }
+  /* Label on its own line, buttons share the line below */
+  .mix-group { flex-wrap: wrap; }
+  .mix-group > * { min-height: 48px; padding: 0 14px; }
+  .mix-head { flex-basis: 100%; }
+  #mix-actions button { flex: 1 1 0; box-shadow: inset var(--r-rule-width) 0 0 var(--r-color-hairline), inset 0 var(--r-rule-width) 0 var(--r-color-hairline); }
 }
 
 @media (prefers-reduced-motion: reduce) {
