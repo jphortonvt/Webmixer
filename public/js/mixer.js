@@ -65,7 +65,11 @@ const Mixer = (() => {
     return new Promise((resolve, reject) => {
       if (el.readyState >= 1) return resolve(); // HAVE_METADATA
       const onMeta = () => { cleanup(); resolve(); };
-      const onErr = () => { cleanup(); reject(new Error(`Failed to load ${name}`)); };
+      const onErr = () => {
+        cleanup();
+        const detail = el.error ? ` (media error ${el.error.code}${el.error.message ? ': ' + el.error.message : ''})` : '';
+        reject(new Error(`Failed to load ${name}${detail}`));
+      };
       const timer = setTimeout(() => {
         console.warn(`No metadata yet for ${name}; continuing without it`);
         onMeta();

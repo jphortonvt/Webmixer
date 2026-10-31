@@ -572,7 +572,13 @@
       Comments.loadComments(sessionId);
     } catch (err) {
       console.error('Failed to load session:', err);
-      loadingText.textContent = 'Error loading session. Check console.';
+      // Logins don't survive a deploy, so a tab left open starts getting 401s
+      const me = await fetch('/auth/me').catch(() => null);
+      if (me && me.status === 401) {
+        window.location.href = '/login.html';
+        return;
+      }
+      loadingText.textContent = `Error loading session: ${err.message}`;
       loadingEl.classList.remove('hidden');
       return;
     }
