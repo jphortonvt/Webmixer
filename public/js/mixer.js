@@ -18,6 +18,11 @@ const Mixer = (() => {
   // being snapped back into sync.
   const DRIFT_TOLERANCE = 0.06;
 
+  // How long to wait for a track's metadata before showing the mixer anyway.
+  // iOS Safari can hold off loading media until playback starts, so this may
+  // never arrive; the duration is picked up from durationchange instead.
+  const METADATA_TIMEOUT_MS = 10000;
+
   function getContext() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -25,12 +30,20 @@ const Mixer = (() => {
     return audioCtx;
   }
 
+  // Fire-and-forget on purpose. Outside a user gesture Safari keeps the
+  // context suspended and leaves resume()'s promise pending forever, so it
+  // must never be awaited. Safari also uses a non-standard 'interrupted'
+  // state after a phone call or backgrounding, hence !== 'running'.
+  function resumeContext() {
+    const ctx = getContext();
+    if (ctx.state !== 'running') {
+      ctx.resume().catch(() => {});
+    }
+  }
+
   // Call this synchronously inside a user gesture to unlock audio on iOS.
   function unlock() {
-    const ctx = getContext();
-    if (ctx.state === 'suspended') {
-      ctx.resume();
-    }
+    resumeContext();
   }
 
   function disposeTracks() {
@@ -53,7 +66,12 @@ const Mixer = (() => {
       if (el.readyState >= 1) return resolve(); // HAVE_METADATA
       const onMeta = () => { cleanup(); resolve(); };
       const onErr = () => { cleanup(); reject(new Error(`Failed to load ${name}`)); };
+      const timer = setTimeout(() => {
+        console.warn(`No metadata yet for ${name}; continuing without it`);
+        onMeta();
+      }, METADATA_TIMEOUT_MS);
       const cleanup = () => {
+        clearTimeout(timer);
         el.removeEventListener('loadedmetadata', onMeta);
         el.removeEventListener('error', onErr);
       };
@@ -62,11 +80,22 @@ const Mixer = (() => {
     });
   }
 
+  // The longest track drives the clock. Durations can arrive after loadTracks
+  // (see METADATA_TIMEOUT_MS), so this reruns on every durationchange.
+  function updateDuration() {
+    duration = 0;
+    masterIndex = tracks.length > 0 ? 0 : -1;
+    tracks.forEach((t, i) => {
+      if (Number.isFinite(t.el.duration) && t.el.duration > duration) {
+        duration = t.el.duration;
+        masterIndex = i;
+      }
+    });
+  }
+
   async function loadTracks(trackList) {
     const ctx = getContext();
-    if (ctx.state === 'suspended') {
-      await ctx.resume();
-    }
+    resumeContext();
 
     stop();
     disposeTracks();
@@ -90,7 +119,7 @@ const Mixer = (() => {
       gainNode.connect(panNode);
       panNode.connect(ctx.destination);
 
-      return {
+      const track = {
         name: t.name,
         url: t.url,
         el,
@@ -101,22 +130,22 @@ const Mixer = (() => {
         _baseVolume: 1,       // volume slider contribution (0–1.5)
         _boostMultiplier: 1,  // trim/boost button contribution
       };
+
+      // Playback-end fires on the longest track
+      el.addEventListener('ended', () => {
+        if (tracks[masterIndex] === track) handleMasterEnded();
+      });
+      el.addEventListener('durationchange', () => {
+        if (!tracks.includes(track)) return;
+        updateDuration();
+        if (onTimeUpdate) onTimeUpdate(getCurrentTime(), duration);
+      });
+
+      return track;
     });
 
     await Promise.all(tracks.map(t => waitForMetadata(t.el, t.name)));
-
-    duration = 0;
-    tracks.forEach((t, i) => {
-      if (t.el.duration > duration) {
-        duration = t.el.duration;
-        masterIndex = i;
-      }
-    });
-
-    // Playback-end fires on the longest track
-    if (masterIndex >= 0) {
-      tracks[masterIndex].el.addEventListener('ended', handleMasterEnded);
-    }
+    updateDuration();
 
     return tracks.length;
   }
@@ -137,17 +166,15 @@ const Mixer = (() => {
   function play() {
     if (isPlaying || tracks.length === 0) return;
 
-    const ctx = getContext();
-    if (ctx.state === 'suspended') {
-      ctx.resume();
-    }
+    resumeContext();
 
     const master = tracks[masterIndex].el;
     const startAt = master.currentTime;
 
     for (const t of tracks) {
-      // Tracks shorter than the master stay silent past their own end
-      if (startAt < t.el.duration) {
+      // Tracks shorter than the master stay silent past their own end.
+      // Written so a duration that isn't known yet (NaN) still plays.
+      if (!(startAt >= t.el.duration)) {
         t.el.currentTime = startAt;
         t.el.play().catch(err => console.warn(`Play failed for ${t.name}:`, err.message));
       }
@@ -341,10 +368,7 @@ const Mixer = (() => {
   // iOS Safari requires AudioContext to be created/resumed within a user gesture.
   // Call this synchronously in any event handler where audio will follow.
   function unlockAudio() {
-    const ctx = getContext();
-    if (ctx.state === 'suspended') {
-      ctx.resume().catch(() => {});
-    }
+    resumeContext();
   }
 
   return {
