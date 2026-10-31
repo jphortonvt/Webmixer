@@ -14,9 +14,17 @@ const Mixer = (() => {
   let driftCheckId = null;
   let wakeLock = null;
 
+  // Safari's MediaElementAudioSourceNode stutters audibly when currentTime is
+  // reset even by a small amount. Back off the drift correction significantly
+  // so Safari only corrects a genuine desync (> 0.4 s) and checks less often.
+  const isSafari = typeof navigator !== 'undefined' &&
+    (/^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
+     /iPad|iPhone|iPod/.test(navigator.userAgent));
+
   // Elements are allowed to drift this far (seconds) from the master before
   // being snapped back into sync.
-  const DRIFT_TOLERANCE = 0.06;
+  const DRIFT_TOLERANCE = isSafari ? 0.4 : 0.06;
+  const DRIFT_CHECK_INTERVAL_MS = isSafari ? 4000 : 1000;
 
   // How long to wait for a track's metadata before showing the mixer anyway.
   // iOS Safari can hold off loading media until playback starts, so this may
@@ -291,7 +299,7 @@ const Mixer = (() => {
           t.el.currentTime = masterTime;
         }
       });
-    }, 1000);
+    }, DRIFT_CHECK_INTERVAL_MS);
   }
 
   function stopLoops() {

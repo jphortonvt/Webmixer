@@ -1811,6 +1811,12 @@ input[type="range"]::-webkit-slider-runnable-track {
     );
   }
 
+  /* Hide the native WebKit track — the line is drawn by #seek-bar's
+     background-image so only one visual track is ever visible. */
+  #seek-bar::-webkit-slider-runnable-track {
+    background: transparent;
+  }
+
   #seek-bar::-webkit-slider-thumb {
     width: 26px;
     height: 26px;
