@@ -3,391 +3,530 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TRAXXXXXXXXS - Admin</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎚</text></svg>">
-  <link rel="stylesheet" href="/css/style.css">
+  <title>TRAXXXXXXXXS — Admin</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='.5' y='.5' width='15' height='15' fill='%23CCFF00' stroke='%230A0A0A'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@200;300;400;500&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script>
+    try { var t = localStorage.getItem('rv2-theme'); if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="/css/ruled/tokens.css">
+  <link rel="stylesheet" href="/css/ruled/base.css">
+  <link rel="stylesheet" href="/css/ruled/grid.css">
+  <link rel="stylesheet" href="/css/mixer-ruled.css">
   <style>
-    .admin-container {
-      max-width: 600px;
-      margin: 40px auto;
-      padding: 0 24px;
-    }
-    .admin-header {
+    /* ── Admin-specific layout ── */
+    .admin-frame {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
+      flex-direction: column;
+      min-height: 100vh;
     }
-    .admin-header h2 { color: var(--accent); }
-    .back-link {
-      color: var(--text-secondary);
+
+    .admin-back {
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 6px;
+      color: var(--r-color-muted);
+      font-family: var(--r-font-family-mono);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       text-decoration: none;
-      font-size: 0.9rem;
+      box-shadow: inset var(--r-rule-width) 0 0 var(--r-rule-color);
+      transition: background-color 150ms, color 150ms;
     }
-    .back-link:hover { color: var(--accent); }
-    .invite-form {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 32px;
-    }
-    .invite-form input {
+    .admin-back:hover { background: var(--mx-invert-bg); color: var(--mx-invert-fg); }
+
+    .admin-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      gap: var(--r-rule-width);
+      background: var(--r-rule-color);
       flex: 1;
-      background: var(--bg-surface);
-      color: var(--text-primary);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 10px 14px;
-      font-size: 0.9rem;
     }
-    .invite-form input:focus {
+    @media (max-width: 720px) {
+      .admin-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    /* Left column stacks members on top, upload below */
+    .admin-col { display: flex; flex-direction: column; gap: var(--r-rule-width); background: var(--r-rule-color); }
+
+    /* Section cells */
+    .admin-cell {
+      background: var(--r-color-paper);
+      padding: var(--r-cell-padding-md);
+      display: flex;
+      flex-direction: column;
+      gap: var(--r-space-md);
+    }
+
+    .section-label {
+      font-family: var(--r-font-family-mono);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--r-color-muted);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: var(--r-space-xs);
+    }
+
+    /* ── Form controls ── */
+    .admin-input {
+      flex: 1;
+      background: var(--r-color-paper);
+      color: var(--r-color-ink);
+      border: var(--r-rule-width) solid var(--r-color-ink);
+      border-radius: 0;
+      padding: 12px 14px;
+      font-family: inherit;
+      font-size: 14px;
       outline: none;
-      border-color: var(--accent);
+      transition: border-color 150ms;
     }
-    .invite-form button {
-      background: var(--accent);
-      color: var(--on-accent);
-      border: none;
-      border-radius: 6px;
-      padding: 10px 20px;
-      font-size: 0.9rem;
+    .admin-input:focus { border-color: var(--r-color-accent); outline: 2px solid var(--r-color-ink); outline-offset: -2px; }
+    .admin-input::placeholder { color: var(--r-color-muted); }
+
+    .admin-btn {
+      background: var(--r-color-ink);
+      color: var(--r-color-paper);
+      border: var(--r-rule-width) solid var(--r-color-ink);
+      border-radius: 0;
+      padding: 12px 20px;
+      font-family: var(--r-font-family-mono);
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       cursor: pointer;
+      white-space: nowrap;
+      transition: background-color 150ms, color 150ms;
     }
-    .invite-form button:hover { opacity: 0.9; }
+    .admin-btn:hover { background: var(--mx-invert-bg); color: var(--mx-invert-fg); border-color: var(--mx-invert-bg); }
+    .admin-btn:disabled { opacity: 0.35; cursor: default; }
+
+    .admin-btn-ghost {
+      background: transparent;
+      color: var(--r-color-ink);
+      border: var(--r-rule-width) solid var(--r-color-hairline);
+      border-radius: 0;
+      padding: 8px 14px;
+      font-family: var(--r-font-family-mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color 150ms, background-color 150ms;
+    }
+    .admin-btn-ghost:hover { border-color: var(--r-color-ink); background: var(--r-color-wash); }
+    .admin-btn-ghost:disabled { opacity: 0.35; cursor: default; }
+
+    .admin-btn-accent {
+      background: var(--r-color-accent);
+      color: var(--r-color-on-accent);
+      border: var(--r-rule-width) solid var(--r-color-accent);
+      border-radius: 0;
+      padding: 8px 14px;
+      font-family: var(--r-font-family-mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: opacity 150ms;
+    }
+    .admin-btn-accent:hover { opacity: 0.85; }
+    .admin-btn-accent:disabled { opacity: 0.35; cursor: default; }
+
+    .row-group { display: flex; gap: var(--r-space-sm); }
+
+    /* ── Messages ── */
     .msg {
-      padding: 10px;
-      border-radius: 6px;
-      margin-bottom: 16px;
-      font-size: 0.85rem;
+      padding: 10px 14px;
+      font-family: var(--r-font-family-mono);
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      border: var(--r-rule-width) solid currentColor;
     }
-    .msg.success { background: rgba(100,200,100,0.15); color: #8c8; border: 1px solid #4a6; }
-    .msg.error { background: rgba(233,69,96,0.15); color: #ff6b81; border: 1px solid #cc3344; }
-    .msg.hidden { display: none; }
-    .user-list { list-style: none; }
-    .user-item {
+    .msg.success { color: #2d7a3a; background: #f0faf1; }
+    .msg.error   { color: #c02030; background: #fff5f5; }
+    .msg.hidden  { display: none; }
+    :root[data-theme="dark"] .msg.success { color: #6dd47c; background: rgba(109, 212, 124, 0.08); }
+    :root[data-theme="dark"] .msg.error   { color: #ff6b7a; background: rgba(255, 107, 122, 0.08); }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .msg.success { color: #6dd47c; background: rgba(109, 212, 124, 0.08); }
+      :root:not([data-theme="light"]) .msg.error   { color: #ff6b7a; background: rgba(255, 107, 122, 0.08); }
+    }
+
+    /* ── User / item rows ── */
+    .item-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--r-rule-width); background: var(--r-rule-color); }
+    .item-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      background: var(--bg-strip);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 12px 16px;
-      margin-bottom: 8px;
+      gap: var(--r-space-md);
+      background: var(--r-color-paper);
+      padding: 12px 14px;
     }
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    .item-row-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .item-avatar {
+      width: 30px; height: 30px;
+      border: var(--r-rule-width) solid var(--r-color-hairline);
+      background: var(--r-color-wash);
+      flex-shrink: 0;
+      object-fit: cover;
+      filter: grayscale(1);
     }
-    .user-avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--bg-surface);
+    .item-primary {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--r-color-ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .user-email { font-size: 0.9rem; }
-    .user-name { font-size: 0.75rem; color: var(--text-secondary); }
-    .user-status {
-      font-size: 0.7rem;
-      padding: 3px 8px;
-      border-radius: 4px;
+    .item-secondary {
+      font-family: var(--r-font-family-mono);
+      font-size: 11px;
+      color: var(--r-color-muted);
+      letter-spacing: 0.04em;
+    }
+    .item-badge {
+      font-family: var(--r-font-family-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      background: var(--r-color-accent);
+      color: var(--r-color-on-accent);
       margin-left: 8px;
     }
-    .status-admin { background: var(--accent); color: var(--on-accent); }
-    .status-active { background: #4a6; color: #fff; }
-    .status-pending { background: var(--bg-surface); color: var(--text-secondary); }
-    .btn-remove {
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--text-secondary);
-      border-radius: 4px;
-      padding: 4px 10px;
-      font-size: 0.75rem;
-      cursor: pointer;
+    .item-badge-muted {
+      font-family: var(--r-font-family-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      background: var(--r-color-wash);
+      color: var(--r-color-muted);
+      border: var(--r-rule-width) solid var(--r-color-hairline);
+      margin-left: 8px;
     }
-    .btn-remove:hover { border-color: var(--accent); color: var(--accent); }
+    .item-badge-green {
+      font-family: var(--r-font-family-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      background: rgba(0, 166, 62, 0.12);
+      color: #2d7a3a;
+      border: var(--r-rule-width) solid rgba(0, 166, 62, 0.3);
+      margin-left: 8px;
+    }
+    :root[data-theme="dark"] .item-badge-green { color: #6dd47c; background: rgba(109, 212, 124, 0.1); border-color: rgba(109, 212, 124, 0.25); }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) .item-badge-green { color: #6dd47c; background: rgba(109, 212, 124, 0.1); border-color: rgba(109, 212, 124, 0.25); }
+    }
 
-    .btn-restore {
-      background: var(--accent);
-      border: 1px solid var(--accent);
-      color: var(--on-accent);
-      border-radius: 4px;
-      padding: 4px 12px;
-      font-size: 0.75rem;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .btn-restore:hover { opacity: 0.9; }
-    .btn-restore:disabled { opacity: 0.5; cursor: default; }
+    .item-actions { display: flex; gap: var(--r-space-xs); flex-shrink: 0; }
 
-    /* Upload section */
-    .section-divider {
-      border: none;
-      border-top: 1px solid var(--border);
-      margin: 32px 0;
-    }
-    .upload-area {
-      border: 2px dashed var(--border);
-      border-radius: 8px;
-      padding: 32px 24px;
+    /* ── Upload area ── */
+    .upload-drop {
+      border: var(--r-rule-width) solid var(--r-color-hairline);
+      padding: 28px 20px;
       text-align: center;
       cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      margin-bottom: 16px;
+      transition: border-color 150ms, background-color 150ms;
     }
-    .upload-area:hover, .upload-area.dragover {
-      border-color: var(--accent);
-      background: rgba(57, 255, 20, 0.05);
+    .upload-drop:hover, .upload-drop.dragover {
+      border-color: var(--r-color-ink);
+      background: var(--r-color-wash);
     }
-    .upload-area p {
-      color: var(--text-secondary);
-      font-size: 0.9rem;
-      margin-bottom: 8px;
+    .upload-drop-primary {
+      font-size: 14px;
+      color: var(--r-color-ink);
+      margin-bottom: 4px;
     }
-    .upload-area .upload-hint {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      opacity: 0.7;
+    .upload-drop-hint {
+      font-family: var(--r-font-family-mono);
+      font-size: 11px;
+      color: var(--r-color-muted);
+      letter-spacing: 0.04em;
+      line-height: 1.6;
     }
-    .upload-file-input { display: none; }
-    .upload-progress {
-      margin-top: 16px;
-    }
-    .upload-progress.hidden { display: none; }
-    .progress-bar-container {
-      background: var(--bg-surface);
-      border-radius: 4px;
-      height: 8px;
+
+    /* Progress */
+    .progress-wrap { display: flex; flex-direction: column; gap: 6px; }
+    .progress-wrap.hidden { display: none; }
+    .progress-track {
+      height: 4px;
+      background: var(--r-color-hairline);
       overflow: hidden;
-      margin-bottom: 8px;
     }
-    .progress-bar {
+    .progress-fill {
       height: 100%;
-      background: var(--accent);
-      border-radius: 4px;
+      background: var(--r-color-ink);
       transition: width 0.3s;
       width: 0%;
     }
-    .progress-text {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-      text-align: center;
+    .progress-label {
+      font-family: var(--r-font-family-mono);
+      font-size: 11px;
+      color: var(--r-color-muted);
+      letter-spacing: 0.04em;
     }
-    .upload-results {
-      font-size: 0.85rem;
-      margin-top: 12px;
-    }
+
+    /* Upload results */
     .upload-results.hidden { display: none; }
 
-    /* Upload queue */
-    .upload-queue { margin-bottom: 16px; }
-    .upload-queue.hidden { display: none; }
-    .queue-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--bg-strip);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 10px 14px;
-      margin-bottom: 6px;
-      font-size: 0.85rem;
-    }
-    .queue-item-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .queue-folder { font-weight: 600; color: var(--text-primary); }
-    .queue-count { font-size: 0.75rem; color: var(--text-secondary); }
-    .queue-size { font-size: 0.75rem; color: var(--text-secondary); }
-    .btn-queue-remove {
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--text-secondary);
-      border-radius: 4px;
-      padding: 3px 8px;
-      font-size: 0.7rem;
-      cursor: pointer;
-    }
-    .btn-queue-remove:hover { border-color: var(--accent); color: var(--accent); }
-    .btn-upload-all {
-      flex: 1;
-      background: var(--accent);
-      color: var(--on-accent);
-      border: none;
-      border-radius: 6px;
-      padding: 10px 20px;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-    .btn-upload-all:hover { opacity: 0.9; }
-    .btn-upload-all.hidden { display: none; }
-    .btn-clear-queue {
-      background: var(--bg-surface);
-      color: var(--text-secondary);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 10px 16px;
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-    .btn-clear-queue:hover { border-color: var(--text-secondary); }
-    .btn-clear-queue.hidden { display: none; }
-
-    /* Session chooser (shown when a pick or drop holds several sessions) */
+    /* Upload chooser */
     .upload-chooser {
-      background: var(--bg-surface);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 16px;
+      border: var(--r-rule-width) solid var(--r-color-hairline);
+      background: var(--r-color-wash);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: var(--r-space-sm);
     }
     .upload-chooser.hidden { display: none; }
     .chooser-head {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-      font-size: 0.85rem;
-      color: var(--text-primary);
+      font-family: var(--r-font-family-mono);
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      color: var(--r-color-muted);
     }
     .chooser-bulk { display: flex; gap: 6px; }
     .chooser-bulk button {
       background: none;
-      border: 1px solid var(--border);
-      color: var(--text-secondary);
-      border-radius: 4px;
-      padding: 3px 10px;
-      font-size: 0.75rem;
+      border: var(--r-rule-width) solid var(--r-color-hairline);
+      color: var(--r-color-muted);
+      border-radius: 0;
+      padding: 2px 8px;
+      font-family: var(--r-font-family-mono);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       cursor: pointer;
     }
-    .chooser-bulk button:hover { border-color: var(--accent); color: var(--accent); }
+    .chooser-bulk button:hover { border-color: var(--r-color-ink); color: var(--r-color-ink); }
     .chooser-row {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
       gap: 10px;
-      background: var(--bg-strip);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 10px 14px;
-      margin-bottom: 6px;
-      font-size: 0.85rem;
+      background: var(--r-color-paper);
+      border: var(--r-rule-width) solid var(--r-color-hairline);
+      padding: 10px 12px;
+      font-size: 13px;
       cursor: pointer;
     }
     .chooser-row.disabled { opacity: 0.5; cursor: default; }
-    .chooser-row input { accent-color: var(--accent); width: 16px; height: 16px; }
-    .chooser-note { font-size: 0.75rem; color: var(--text-secondary); font-style: italic; }
-    .chooser-actions { display: flex; gap: 8px; margin-top: 10px; }
-    .chooser-actions .btn-upload-all:disabled { opacity: 0.4; cursor: default; }
+    .chooser-row input { accent-color: var(--r-color-ink); width: 14px; height: 14px; }
+    .chooser-note { font-family: var(--r-font-family-mono); font-size: 10px; color: var(--r-color-muted); letter-spacing: 0.04em; font-style: italic; }
+    .chooser-actions { display: flex; gap: var(--r-space-sm); }
+
+    /* Upload queue */
+    .upload-queue { display: flex; flex-direction: column; gap: var(--r-rule-width); background: var(--r-rule-color); }
+    .upload-queue.hidden { display: none; }
+    .queue-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--r-color-paper);
+      padding: 10px 12px;
+      font-size: 13px;
+      gap: var(--r-space-md);
+    }
+    .queue-item-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+    .queue-folder { font-weight: 500; font-family: var(--r-font-family-mono); font-size: 12px; letter-spacing: 0.04em; }
+    .queue-count, .queue-size { font-family: var(--r-font-family-mono); font-size: 10px; color: var(--r-color-muted); letter-spacing: 0.04em; }
+
+    .btn-upload-all  { } /* reuse admin-btn */
+    .btn-clear-queue { } /* reuse admin-btn-ghost */
+    .btn-upload-all.hidden, .btn-clear-queue.hidden { display: none; }
+
+    /* Admin-specific description text */
+    .admin-desc {
+      font-size: 13px;
+      color: var(--r-color-muted);
+      line-height: 1.6;
+    }
+
+    /* Empty state */
+    .empty-state {
+      font-family: var(--r-font-family-mono);
+      font-size: 11px;
+      color: var(--r-color-muted);
+      letter-spacing: 0.04em;
+      padding: 12px 0;
+    }
   </style>
 </head>
-<body>
-  <header>
-    <h1>TRAXXXXXXXXS</h1>
-  </header>
-  <div class="admin-container">
-    <div class="admin-header">
-      <h2>Manage Members</h2>
-      <a href="/" class="back-link">Back to Mixer</a>
-    </div>
-
-    <div class="invite-form">
-      <input type="email" id="invite-email" placeholder="Enter email to invite...">
-      <button id="btn-invite">Invite</button>
-    </div>
-
-    <div id="msg" class="msg hidden"></div>
-
-    <ul class="user-list" id="user-list"></ul>
-
-    <hr class="section-divider">
-
-    <div class="admin-header">
-      <h2>Upload Sessions</h2>
-    </div>
-
-    <div class="upload-area" id="upload-area">
-      <p>Drag session folders here, or click to pick a folder</p>
-      <p class="upload-hint">Folders hold WAV files, e.g. 251213_000100/TRACK01.WAV. To add several, drop them together or pick the folder that holds them (like the SD card) and choose sessions from the list.</p>
-      <input type="file" class="upload-file-input" id="upload-input" webkitdirectory multiple>
-    </div>
-
-    <div id="upload-chooser" class="upload-chooser hidden"></div>
-
-    <div id="upload-queue" class="upload-queue hidden"></div>
-
-    <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-      <button id="btn-upload-all" class="btn-upload-all hidden">Upload All</button>
-      <button id="btn-clear-queue" class="btn-clear-queue hidden">Clear Queue</button>
-    </div>
-
-    <div class="upload-progress hidden" id="upload-progress">
-      <div class="progress-bar-container">
-        <div class="progress-bar" id="progress-bar"></div>
-      </div>
-      <div class="progress-text" id="progress-text">Uploading...</div>
-    </div>
-
-    <div class="upload-results hidden" id="upload-results"></div>
-
-    <hr class="section-divider">
-
-    <div class="admin-header">
-      <h2>Archived Sessions</h2>
-    </div>
-
-    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 20px; line-height: 1.6;">
-      Sessions any member has archived. They are hidden from everyone's session
-      picker until restored here — nothing is deleted, and the audio stays in place.
-    </p>
-
-    <div id="archived-msg" class="msg hidden"></div>
-    <ul class="user-list" id="archived-list"></ul>
-
-    <hr class="section-divider">
-
-    <div class="admin-header">
-      <h2>Manage Songs</h2>
-    </div>
-
-    <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 20px; line-height: 1.6;">
-      Upload finished MP3 tracks that appear in every user's Playlist tab.
-      Users can personalise the order, but you control which songs are available.
-    </p>
-
-    <!-- Song upload form -->
-    <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
-      <input type="text" id="song-name-input" placeholder="Song display name..."
-        style="flex: 1; min-width: 180px; background: var(--bg-surface); color: var(--text-primary);
-               border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; font-size: 0.9rem;">
-      <button id="btn-pick-song"
-        style="background: var(--accent); color: var(--on-accent); border: none; border-radius: 6px;
-               padding: 10px 20px; font-size: 0.9rem; cursor: pointer; white-space: nowrap;">
-        Choose File
-      </button>
-      <input type="file" id="song-file-input" accept="audio/mpeg,audio/mp4,audio/wav,.mp3,.m4a,.wav" style="display:none">
-    </div>
-
-    <div id="song-msg" class="msg hidden"></div>
-
-    <div class="upload-progress hidden" id="song-progress">
-      <div class="progress-bar-container">
-        <div class="progress-bar" id="song-progress-bar"></div>
-      </div>
-      <div class="progress-text" id="song-progress-text">Uploading...</div>
-    </div>
-
-    <ul class="user-list" id="song-list-admin" style="margin-top: 16px;"></ul>
-
-  </div>
-
+<body class="r-page rv2 admin-frame">
   <script>
-    const userList = document.getElementById('user-list');
+    try { var t = localStorage.getItem('rv2-theme'); if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+
+  <header class="app-header">
+    <div class="brand">
+      <span class="r-mark" aria-hidden="true"></span>
+      <h1>TRAXXXXXXXXS</h1>
+    </div>
+    <a href="/" class="admin-back" title="Back to Mixer">
+      <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Mixer
+    </a>
+    <button type="button" id="theme-toggle" class="theme-toggle" aria-pressed="false" aria-label="Switch to dark mode" title="Switch to dark mode">
+      <svg class="icon-moon" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>
+      <svg class="icon-sun" aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+    <div id="user-info" class="user-info hidden">
+      <button type="button" id="user-menu-btn" class="user-menu-btn" aria-expanded="false" aria-controls="user-menu" aria-label="Account">
+        <img id="user-avatar" class="user-avatar-small" src="" alt="" referrerpolicy="no-referrer">
+        <svg class="user-fallback" aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+      </button>
+      <div id="user-menu" class="user-menu" hidden>
+        <span id="user-name" class="user-menu-name"></span>
+        <a href="/admin.html" id="admin-link" class="user-menu-item hidden">Admin</a>
+        <a href="/auth/logout" class="user-menu-item">Logout</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="admin-grid">
+
+    <!-- ══ Left column: Members + Upload Sessions ══ -->
+    <div class="admin-col">
+
+      <!-- 01 Members -->
+      <section class="admin-cell">
+        <div class="section-label"><span class="r-tag">01</span>Members</div>
+
+        <div class="row-group">
+          <input type="email" id="invite-email" class="admin-input" placeholder="Email address to invite…">
+          <button id="btn-invite" class="admin-btn">Invite</button>
+        </div>
+
+        <div id="msg" class="msg hidden"></div>
+
+        <ul class="item-list" id="user-list"></ul>
+      </section>
+
+      <!-- 03 Upload Sessions -->
+      <section class="admin-cell">
+        <div class="section-label"><span class="r-tag">03</span>Upload Sessions</div>
+
+        <div class="upload-drop" id="upload-area">
+          <p class="upload-drop-primary">Drag session folders here, or click to pick a folder</p>
+          <p class="upload-drop-hint">Folders hold WAV files, e.g. 251213_000100/TRACK01.WAV.<br>Drop several at once, or pick the SD card and choose sessions from the list.</p>
+          <input type="file" class="upload-file-input" id="upload-input" webkitdirectory multiple style="display:none">
+        </div>
+
+        <div id="upload-chooser" class="upload-chooser hidden"></div>
+
+        <div id="upload-queue" class="upload-queue hidden"></div>
+
+        <div class="row-group">
+          <button id="btn-upload-all" class="admin-btn btn-upload-all hidden">Upload All</button>
+          <button id="btn-clear-queue" class="admin-btn-ghost btn-clear-queue hidden">Clear Queue</button>
+        </div>
+
+        <div class="progress-wrap hidden" id="upload-progress">
+          <div class="progress-track"><div class="progress-fill" id="progress-bar"></div></div>
+          <div class="progress-label" id="progress-text">Uploading…</div>
+        </div>
+
+        <div class="upload-results hidden" id="upload-results"></div>
+      </section>
+
+    </div><!-- /left col -->
+
+    <!-- ══ Right column: Songs + Archived ══ -->
+    <div class="admin-col">
+
+      <!-- 02 Songs -->
+      <section class="admin-cell">
+        <div class="section-label"><span class="r-tag">02</span>Songs</div>
+        <p class="admin-desc">Upload finished tracks that appear in every user's Playlist tab.</p>
+
+        <div class="row-group" style="flex-wrap:wrap">
+          <input type="text" id="song-name-input" class="admin-input" placeholder="Song display name…">
+          <button id="btn-pick-song" class="admin-btn">Choose File</button>
+          <input type="file" id="song-file-input" accept="audio/mpeg,audio/mp4,audio/wav,.mp3,.m4a,.wav" style="display:none">
+        </div>
+
+        <div id="song-msg" class="msg hidden"></div>
+
+        <div class="progress-wrap hidden" id="song-progress">
+          <div class="progress-track"><div class="progress-fill" id="song-progress-bar"></div></div>
+          <div class="progress-label" id="song-progress-text">Uploading…</div>
+        </div>
+
+        <ul class="item-list" id="song-list-admin" style="margin-top:4px"></ul>
+      </section>
+
+      <!-- 04 Archived Sessions -->
+      <section class="admin-cell">
+        <div class="section-label"><span class="r-tag">04</span>Archived Sessions</div>
+        <p class="admin-desc">Sessions hidden from everyone's picker until restored here. Nothing is deleted.</p>
+
+        <div id="archived-msg" class="msg hidden"></div>
+        <ul class="item-list" id="archived-list"></ul>
+      </section>
+
+    </div><!-- /right col -->
+
+  </div><!-- /admin-grid -->
+
+  <script src="/js/auth.js"></script>
+  <script>
+    // ── Init auth + theme ─────────────────────────────────────────
+    Auth.init();
+
+    // Theme toggle (mirrors index.html)
+    const themeToggle = document.getElementById('theme-toggle');
+    function applyTheme(t) {
+      document.documentElement.dataset.theme = t;
+      themeToggle.setAttribute('aria-pressed', t === 'dark');
+      themeToggle.setAttribute('aria-label', t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+      themeToggle.setAttribute('title', t === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+    }
+    themeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.dataset.theme === 'dark' ||
+        (!document.documentElement.dataset.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      const next = isDark ? 'light' : 'dark';
+      try { localStorage.setItem('rv2-theme', next); } catch (e) {}
+      applyTheme(next);
+    });
+    try {
+      const saved = localStorage.getItem('rv2-theme');
+      if (saved === 'dark' || saved === 'light') applyTheme(saved);
+    } catch (e) {}
+
+    // User menu
+    const userMenuBtn = document.getElementById('user-menu-btn');
+    const userMenu    = document.getElementById('user-menu');
+    userMenuBtn.addEventListener('click', () => {
+      const open = userMenu.hidden;
+      userMenu.hidden = !open;
+      userMenuBtn.setAttribute('aria-expanded', String(open));
+    });
+    document.addEventListener('click', e => {
+      if (!userMenuBtn.contains(e.target) && !userMenu.contains(e.target)) {
+        userMenu.hidden = true;
+        userMenuBtn.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // ── Members ───────────────────────────────────────────────────
+    const userList  = document.getElementById('user-list');
     const inviteEmail = document.getElementById('invite-email');
     const btnInvite = document.getElementById('btn-invite');
-    const msgEl = document.getElementById('msg');
+    const msgEl     = document.getElementById('msg');
 
     function showMsg(text, type) {
       msgEl.textContent = text;
@@ -398,33 +537,36 @@
     async function loadUsers() {
       const res = await fetch('/api/admin/users');
       if (res.status === 403) {
-        document.querySelector('.admin-container').innerHTML = '<p style="text-align:center;color:var(--accent);margin-top:60px;">Admin access required.</p>';
+        document.querySelector('.admin-grid').innerHTML =
+          '<p style="padding:40px;color:var(--r-color-muted);font-family:var(--r-font-family-mono);font-size:13px;">Admin access required.</p>';
         return;
       }
       const users = await res.json();
       userList.innerHTML = '';
       users.forEach(u => {
         const li = document.createElement('li');
-        li.className = 'user-item';
+        li.className = 'item-row';
 
-        let status;
-        if (u.is_admin) status = '<span class="user-status status-admin">Admin</span>';
-        else if (u.last_login) status = '<span class="user-status status-active">Active</span>';
-        else status = '<span class="user-status status-pending">Pending</span>';
+        let badge = '';
+        if (u.is_admin)       badge = '<span class="item-badge">Admin</span>';
+        else if (u.last_login) badge = '<span class="item-badge-green">Active</span>';
+        else                   badge = '<span class="item-badge-muted">Pending</span>';
 
         const avatar = u.picture
-          ? '<img class="user-avatar" src="' + u.picture + '" referrerpolicy="no-referrer">'
-          : '<div class="user-avatar"></div>';
+          ? `<img class="item-avatar" src="${u.picture}" referrerpolicy="no-referrer" alt="">`
+          : '<div class="item-avatar"></div>';
 
         li.innerHTML = `
-          <div class="user-info">
+          <div class="item-row-info">
             ${avatar}
             <div>
-              <div class="user-email">${u.email} ${status}</div>
-              <div class="user-name">${u.name || 'Not yet signed in'}</div>
+              <div class="item-primary">${u.email}${badge}</div>
+              <div class="item-secondary">${u.name || 'Not yet signed in'}</div>
             </div>
           </div>
-          ${u.is_admin ? '' : '<button class="btn-remove" data-id="' + u.id + '">Remove</button>'}
+          <div class="item-actions">
+            ${u.is_admin ? '' : `<button class="admin-btn-ghost btn-remove" data-id="${u.id}">Remove</button>`}
+          </div>
         `;
         userList.appendChild(li);
       });
@@ -433,13 +575,8 @@
         btn.addEventListener('click', async () => {
           if (!confirm('Remove this user? Their comments will also be deleted.')) return;
           const res = await fetch('/api/admin/users/' + btn.dataset.id, { method: 'DELETE' });
-          if (res.ok) {
-            showMsg('User removed.', 'success');
-            loadUsers();
-          } else {
-            const data = await res.json();
-            showMsg(data.error || 'Failed to remove user.', 'error');
-          }
+          if (res.ok) { showMsg('User removed.', 'success'); loadUsers(); }
+          else { const d = await res.json(); showMsg(d.error || 'Failed to remove user.', 'error'); }
         });
       });
     }
@@ -453,53 +590,32 @@
         body: JSON.stringify({ email })
       });
       const data = await res.json();
-      if (res.ok) {
-        showMsg('Invited ' + email, 'success');
-        inviteEmail.value = '';
-        loadUsers();
-      } else {
-        showMsg(data.error || 'Failed to invite.', 'error');
-      }
+      if (res.ok) { showMsg('Invited ' + email, 'success'); inviteEmail.value = ''; loadUsers(); }
+      else { showMsg(data.error || 'Failed to invite.', 'error'); }
     });
 
-    inviteEmail.addEventListener('keydown', e => {
-      if (e.key === 'Enter') btnInvite.click();
-    });
-
+    inviteEmail.addEventListener('keydown', e => { if (e.key === 'Enter') btnInvite.click(); });
     loadUsers();
 
-    // --- Upload functionality (queue-based) ---
-    const uploadArea = document.getElementById('upload-area');
-    const uploadInput = document.getElementById('upload-input');
+    // ── Upload functionality (queue-based) ───────────────────────
+    const uploadArea   = document.getElementById('upload-area');
+    const uploadInput  = document.getElementById('upload-input');
     const uploadProgress = document.getElementById('upload-progress');
-    const progressBar = document.getElementById('progress-bar');
+    const progressBar  = document.getElementById('progress-bar');
     const progressText = document.getElementById('progress-text');
     const uploadResults = document.getElementById('upload-results');
-    const uploadQueue = document.getElementById('upload-queue');
+    const uploadQueue  = document.getElementById('upload-queue');
     const btnUploadAll = document.getElementById('btn-upload-all');
     const btnClearQueue = document.getElementById('btn-clear-queue');
 
-    // Queue: array of { folder, files: [File, ...], totalSize }
     let fileQueue = [];
 
     uploadArea.addEventListener('click', () => uploadInput.click());
+    uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', () => { uploadArea.classList.remove('dragover'); });
 
-    uploadArea.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadArea.classList.add('dragover');
-    });
+    function relPathOf(f) { return f._relPath || f.webkitRelativePath || f.name; }
 
-    uploadArea.addEventListener('dragleave', () => {
-      uploadArea.classList.remove('dragover');
-    });
-
-    // Relative path of a queued file. Dropped files carry it in _relPath because
-    // the browser only fills webkitRelativePath for files picked via the input.
-    function relPathOf(f) {
-      return f._relPath || f.webkitRelativePath || f.name;
-    }
-
-    // Recursively collect files under a dropped FileSystemEntry.
     async function collectEntryFiles(entry, out) {
       if (entry.isFile) {
         const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
@@ -507,7 +623,6 @@
         out.push(file);
       } else if (entry.isDirectory) {
         const reader = entry.createReader();
-        // readEntries returns results in batches; keep reading until empty
         while (true) {
           const batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
           if (batch.length === 0) break;
@@ -516,25 +631,16 @@
       }
     }
 
-    // Dropping lets you add many folders at once (the picker allows only one).
-    uploadArea.addEventListener('drop', async (e) => {
+    uploadArea.addEventListener('drop', async e => {
       e.preventDefault();
       uploadArea.classList.remove('dragover');
-
-      // Grab entries synchronously — the DataTransfer is cleared after the first await
       const entries = Array.from(e.dataTransfer.items || [])
         .map(item => item.webkitGetAsEntry && item.webkitGetAsEntry())
         .filter(Boolean);
       if (entries.length === 0) return;
-
       const files = [];
-      try {
-        for (const entry of entries) await collectEntryFiles(entry, files);
-      } catch (err) {
-        console.error('Failed to read dropped folders:', err);
-        showMsg('Could not read the dropped folders.', 'error');
-        return;
-      }
+      try { for (const entry of entries) await collectEntryFiles(entry, files); }
+      catch (err) { console.error('Failed to read dropped folders:', err); showMsg('Could not read the dropped folders.', 'error'); return; }
       addFilesToQueue(files);
     });
 
@@ -546,17 +652,8 @@
 
     function addFilesToQueue(files) {
       if (files.length === 0) return;
-
-      // Filter to WAV files only
       const wavFiles = files.filter(f => /\.wav$/i.test(f.name));
-
-      if (wavFiles.length === 0) {
-        showMsg('No WAV files found in the selected folder.', 'error');
-        return;
-      }
-
-      // Group by session folder. WAVs outside a YYMMDD_HHMMSS folder have no
-      // session to upload into, so they are counted and left out.
+      if (wavFiles.length === 0) { showMsg('No WAV files found in the selected folder.', 'error'); return; }
       const folderMap = {};
       let strays = 0;
       for (const f of wavFiles) {
@@ -565,51 +662,27 @@
         if (!folderMap[folder]) folderMap[folder] = [];
         folderMap[folder].push(f);
       }
-
       const sessions = Object.keys(folderMap).sort().map(folder => ({
-        folder,
-        files: folderMap[folder],
+        folder, files: folderMap[folder],
         totalSize: folderMap[folder].reduce((sum, f) => sum + f.size, 0),
       }));
-
-      if (sessions.length === 0) {
-        showMsg('No session folders (YYMMDD_HHMMSS) found in the selection.', 'error');
-        return;
-      }
-
-      // One session needs no choosing; several get a checklist
-      if (sessions.length === 1) {
-        queueSessions(sessions);
-      } else {
-        showChooser(sessions, strays);
-      }
+      if (sessions.length === 0) { showMsg('No session folders (YYMMDD_HHMMSS) found in the selection.', 'error'); return; }
+      if (sessions.length === 1) queueSessions(sessions);
+      else showChooser(sessions, strays);
     }
 
     function queueSessions(sessions) {
       let added = 0;
       for (const s of sessions) {
-        if (fileQueue.some(q => q.folder === s.folder)) {
-          showMsg(`"${s.folder}" is already in the queue.`, 'error');
-          continue;
-        }
-        fileQueue.push(s);
-        added++;
+        if (fileQueue.some(q => q.folder === s.folder)) { showMsg(`"${s.folder}" is already in the queue.`, 'error'); continue; }
+        fileQueue.push(s); added++;
       }
-
-      if (added > 0) {
-        showMsg(`Added ${added} folder(s) to upload queue.`, 'success');
-      }
-
+      if (added > 0) showMsg(`Added ${added} folder(s) to upload queue.`, 'success');
       renderQueue();
     }
 
-    // Session IDs already on the server, so the chooser can flag re-uploads.
-    // Best effort: without it the chooser just shows no flags.
     let existingSessions = new Set();
-    fetch('/api/sessions?includeArchived=1')
-      .then(res => res.ok ? res.json() : [])
-      .then(list => { existingSessions = new Set(list.map(s => s.id)); })
-      .catch(() => {});
+    fetch('/api/sessions?includeArchived=1').then(r => r.ok ? r.json() : []).then(list => { existingSessions = new Set(list.map(s => s.id)); }).catch(() => {});
 
     const chooserEl = document.getElementById('upload-chooser');
 
@@ -619,15 +692,13 @@
         const uploaded = existingSessions.has(s.folder);
         const note = queued ? 'in queue' : uploaded ? 'already uploaded' : '';
         const sizeMB = (s.totalSize / 1024 / 1024).toFixed(0);
-        return `
-          <label class="chooser-row${queued ? ' disabled' : ''}">
-            <input type="checkbox" data-idx="${idx}" ${queued ? 'disabled' : uploaded ? '' : 'checked'}>
-            <span class="queue-folder">${s.folder}</span>
-            <span class="queue-count">${s.files.length} WAV files</span>
-            <span class="queue-size">${sizeMB} MB</span>
-            ${note ? `<span class="chooser-note">${note}</span>` : ''}
-          </label>
-        `;
+        return `<label class="chooser-row${queued ? ' disabled' : ''}">
+          <input type="checkbox" data-idx="${idx}" ${queued ? 'disabled' : uploaded ? '' : 'checked'}>
+          <span class="queue-folder">${s.folder}</span>
+          <span class="queue-count">${s.files.length} WAV files</span>
+          <span class="queue-size">${sizeMB} MB</span>
+          ${note ? `<span class="chooser-note">${note}</span>` : ''}
+        </label>`;
       }).join('');
 
       chooserEl.innerHTML = `
@@ -641,107 +712,62 @@
         ${rows}
         ${strays ? `<p class="chooser-note">${strays} WAV file(s) outside a session folder were left out.</p>` : ''}
         <div class="chooser-actions">
-          <button type="button" class="btn-upload-all" data-action="add"></button>
-          <button type="button" class="btn-clear-queue" data-action="cancel">Cancel</button>
-        </div>
-      `;
+          <button type="button" class="admin-btn" data-action="add"></button>
+          <button type="button" class="admin-btn-ghost" data-action="cancel">Cancel</button>
+        </div>`;
       chooserEl.classList.remove('hidden');
 
       const boxes = Array.from(chooserEl.querySelectorAll('input[type="checkbox"]:not(:disabled)'));
       const addBtn = chooserEl.querySelector('[data-action="add"]');
-      const syncAddBtn = () => {
-        const n = boxes.filter(b => b.checked).length;
-        addBtn.textContent = `Add ${n} to queue`;
-        addBtn.disabled = n === 0;
-      };
+      const syncAddBtn = () => { const n = boxes.filter(b => b.checked).length; addBtn.textContent = `Add ${n} to queue`; addBtn.disabled = n === 0; };
       boxes.forEach(b => b.addEventListener('change', syncAddBtn));
       chooserEl.querySelectorAll('[data-bulk]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          boxes.forEach(b => { b.checked = btn.dataset.bulk === 'all'; });
-          syncAddBtn();
-        });
+        btn.addEventListener('click', () => { boxes.forEach(b => { b.checked = btn.dataset.bulk === 'all'; }); syncAddBtn(); });
       });
-      addBtn.addEventListener('click', () => {
-        const picked = boxes.filter(b => b.checked).map(b => sessions[b.dataset.idx]);
-        hideChooser();
-        queueSessions(picked);
-      });
+      addBtn.addEventListener('click', () => { const picked = boxes.filter(b => b.checked).map(b => sessions[b.dataset.idx]); hideChooser(); queueSessions(picked); });
       chooserEl.querySelector('[data-action="cancel"]').addEventListener('click', hideChooser);
       syncAddBtn();
     }
 
-    function hideChooser() {
-      chooserEl.classList.add('hidden');
-      chooserEl.innerHTML = '';
-    }
+    function hideChooser() { chooserEl.classList.add('hidden'); chooserEl.innerHTML = ''; }
 
     function renderQueue() {
       if (fileQueue.length === 0) {
-        uploadQueue.classList.add('hidden');
-        btnUploadAll.classList.add('hidden');
-        btnClearQueue.classList.add('hidden');
-        uploadQueue.innerHTML = '';
-        return;
+        uploadQueue.classList.add('hidden'); btnUploadAll.classList.add('hidden'); btnClearQueue.classList.add('hidden'); uploadQueue.innerHTML = ''; return;
       }
-
-      uploadQueue.classList.remove('hidden');
-      btnUploadAll.classList.remove('hidden');
-      btnClearQueue.classList.remove('hidden');
-
+      uploadQueue.classList.remove('hidden'); btnUploadAll.classList.remove('hidden'); btnClearQueue.classList.remove('hidden');
       uploadQueue.innerHTML = fileQueue.map((q, idx) => {
         const sizeMB = (q.totalSize / 1024 / 1024).toFixed(0);
-        return `
-          <div class="queue-item">
-            <div class="queue-item-info">
-              <span class="queue-folder">${q.folder}</span>
-              <span class="queue-count">${q.files.length} WAV files</span>
-              <span class="queue-size">${sizeMB} MB</span>
-            </div>
-            <button class="btn-queue-remove" data-idx="${idx}">Remove</button>
+        return `<div class="queue-item">
+          <div class="queue-item-info">
+            <span class="queue-folder">${q.folder}</span>
+            <span class="queue-count">${q.files.length} WAV</span>
+            <span class="queue-size">${sizeMB} MB</span>
           </div>
-        `;
+          <button class="admin-btn-ghost btn-queue-remove" data-idx="${idx}">Remove</button>
+        </div>`;
       }).join('');
-
-      // Wire up remove buttons
       uploadQueue.querySelectorAll('.btn-queue-remove').forEach(btn => {
-        btn.addEventListener('click', () => {
-          fileQueue.splice(parseInt(btn.dataset.idx), 1);
-          renderQueue();
-        });
+        btn.addEventListener('click', () => { fileQueue.splice(parseInt(btn.dataset.idx), 1); renderQueue(); });
       });
     }
 
-    btnClearQueue.addEventListener('click', () => {
-      fileQueue = [];
-      renderQueue();
-    });
+    btnClearQueue.addEventListener('click', () => { fileQueue = []; renderQueue(); });
 
     btnUploadAll.addEventListener('click', async () => {
       if (fileQueue.length === 0) return;
-
       const allFiles = fileQueue.flatMap(q => q.files);
       const totalSize = fileQueue.reduce((sum, q) => sum + q.totalSize, 0);
       const sizeMB = (totalSize / 1024 / 1024).toFixed(0);
       const folderNames = fileQueue.map(q => q.folder);
+      if (!confirm(`Upload ${allFiles.length} WAV files from ${folderNames.length} session(s)? (${sizeMB} MB total)\n\nSessions:\n${folderNames.join('\n')}`)) return;
 
-      if (!confirm(`Upload ${allFiles.length} WAV files from ${folderNames.length} session(s)? (${sizeMB} MB total)\n\nSessions:\n${folderNames.join('\n')}`)) {
-        return;
-      }
-
-      // Disable buttons during upload
-      btnUploadAll.disabled = true;
-      btnClearQueue.disabled = true;
-      uploadArea.style.pointerEvents = 'none';
-      uploadArea.style.opacity = '0.5';
-
-      uploadProgress.classList.remove('hidden');
-      uploadResults.classList.add('hidden');
-      let uploaded = 0;
-      let failed = 0;
-
+      btnUploadAll.disabled = true; btnClearQueue.disabled = true;
+      uploadArea.style.pointerEvents = 'none'; uploadArea.style.opacity = '0.5';
+      uploadProgress.classList.remove('hidden'); uploadResults.classList.add('hidden');
+      let uploaded = 0, failed = 0, skipped = 0;
+      const errors = [];
       const FOLDER_PATTERN = /^\d{6}_\d{6}$/;
-      let skipped = 0;
-      let errors = [];
 
       for (let i = 0; i < allFiles.length; i++) {
         const file = allFiles[i];
@@ -749,318 +775,172 @@
         const percent = Math.round((i / allFiles.length) * 100);
         progressBar.style.width = percent + '%';
         progressText.textContent = `Uploading ${i + 1}/${allFiles.length}: ${relPath}`;
-
-        // Parse session folder and filename from the relative path
         const parts = relPath.split('/');
         let sessionId = null, fileName = null;
         for (let pi = 0; pi < parts.length; pi++) {
-          if (FOLDER_PATTERN.test(parts[pi])) {
-            sessionId = parts[pi];
-            fileName = parts.slice(pi + 1).join('/');
-            break;
-          }
+          if (FOLDER_PATTERN.test(parts[pi])) { sessionId = parts[pi]; fileName = parts.slice(pi + 1).join('/'); break; }
         }
-
-        if (!sessionId || !fileName) {
-          skipped++;
-          errors.push(relPath + ': no YYMMDD_HHMMSS folder in path');
-          continue;
-        }
-
+        if (!sessionId || !fileName) { skipped++; errors.push(relPath + ': no YYMMDD_HHMMSS folder in path'); continue; }
         const key = sessionId + '/' + fileName;
-
         try {
-          // Step 1: Get a pre-signed URL from the server (tiny request, no file data)
-          const urlRes = await fetch('/api/admin/upload-url', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ key }),
-          });
-          if (!urlRes.ok) {
-            const err = await urlRes.json();
-            throw new Error(err.error || 'Failed to get upload URL');
-          }
+          const urlRes = await fetch('/api/admin/upload-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key }) });
+          if (!urlRes.ok) { const err = await urlRes.json(); throw new Error(err.error || 'Failed to get upload URL'); }
           const { url } = await urlRes.json();
-
-          // Step 2: Upload file directly to B2 (browser -> B2, no server memory used)
-          const putRes = await fetch(url, {
-            method: 'PUT',
-            body: file,
-            headers: { 'Content-Type': 'audio/wav' },
-          });
-          if (!putRes.ok) {
-            throw new Error('B2 upload failed: ' + putRes.status);
-          }
+          const putRes = await fetch(url, { method: 'PUT', body: file, headers: { 'Content-Type': 'audio/wav' } });
+          if (!putRes.ok) throw new Error('B2 upload failed: ' + putRes.status);
           uploaded++;
-        } catch (err) {
-          console.error('Upload failed:', key, err);
-          failed++;
-          errors.push(key + ': ' + err.message);
-        }
+        } catch (err) { console.error('Upload failed:', key, err); failed++; errors.push(key + ': ' + err.message); }
       }
 
-      progressBar.style.width = '100%';
-      progressText.textContent = 'Upload complete!';
-
+      progressBar.style.width = '100%'; progressText.textContent = 'Upload complete!';
       uploadResults.classList.remove('hidden');
       let resultHtml = '';
-      if (uploaded > 0) {
-        resultHtml += `<div class="msg success">Uploaded ${uploaded} file(s) to ${folderNames.length} session(s).</div>`;
-      }
+      if (uploaded > 0) resultHtml += `<div class="msg success">Uploaded ${uploaded} file(s) to ${folderNames.length} session(s).</div>`;
       if (failed > 0 || skipped > 0) {
         let failMsg = '';
         if (failed > 0) failMsg += failed + ' file(s) failed. ';
         if (skipped > 0) failMsg += skipped + ' file(s) skipped. ';
-        if (errors.length > 0) {
-          failMsg += '<br><small>' + errors.join('<br>') + '</small>';
-        }
+        if (errors.length > 0) failMsg += '<br><small style="font-family:monospace">' + errors.join('<br>') + '</small>';
         resultHtml += `<div class="msg error">${failMsg}</div>`;
       }
-      if (!resultHtml) {
-        resultHtml = '<div class="msg error">No files were uploaded.</div>';
-      }
+      if (!resultHtml) resultHtml = '<div class="msg error">No files were uploaded.</div>';
       uploadResults.innerHTML = resultHtml;
-
-      // Clear queue
-      fileQueue = [];
-      renderQueue();
-
-      // Re-enable controls
-      btnUploadAll.disabled = false;
-      btnClearQueue.disabled = false;
-      uploadArea.style.pointerEvents = '';
-      uploadArea.style.opacity = '';
-
-      // Hide progress after a moment
-      setTimeout(() => {
-        uploadProgress.classList.add('hidden');
-      }, 2000);
+      fileQueue = []; renderQueue();
+      btnUploadAll.disabled = false; btnClearQueue.disabled = false;
+      uploadArea.style.pointerEvents = ''; uploadArea.style.opacity = '';
+      setTimeout(() => { uploadProgress.classList.add('hidden'); }, 2000);
     });
 
-    // --- Song management ---
-    const songNameInput = document.getElementById('song-name-input');
-    const btnPickSong = document.getElementById('btn-pick-song');
-    const songFileInput = document.getElementById('song-file-input');
-    const songMsgEl = document.getElementById('song-msg');
+    // ── Song management ───────────────────────────────────────────
+    const songNameInput  = document.getElementById('song-name-input');
+    const btnPickSong    = document.getElementById('btn-pick-song');
+    const songFileInput  = document.getElementById('song-file-input');
+    const songMsgEl      = document.getElementById('song-msg');
     const songProgressEl = document.getElementById('song-progress');
-    const songProgressBar = document.getElementById('song-progress-bar');
+    const songProgressBar  = document.getElementById('song-progress-bar');
     const songProgressText = document.getElementById('song-progress-text');
-    const songListAdmin = document.getElementById('song-list-admin');
-
-    let pendingSongFile = null;
+    const songListAdmin  = document.getElementById('song-list-admin');
+    let pendingSongFile  = null;
 
     function showSongMsg(text, type) {
-      songMsgEl.textContent = text;
-      songMsgEl.className = 'msg ' + type;
+      songMsgEl.textContent = text; songMsgEl.className = 'msg ' + type;
       setTimeout(() => { songMsgEl.className = 'msg hidden'; }, 5000);
     }
 
     btnPickSong.addEventListener('click', () => songFileInput.click());
-
     songFileInput.addEventListener('change', () => {
-      const file = songFileInput.files[0];
-      if (!file) return;
+      const file = songFileInput.files[0]; if (!file) return;
       pendingSongFile = file;
-
-      // Auto-fill name from filename if blank
-      if (!songNameInput.value.trim()) {
-        songNameInput.value = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
-      }
-
-      btnPickSong.textContent = file.name.length > 24 ? file.name.slice(0, 22) + '...' : file.name;
+      if (!songNameInput.value.trim()) songNameInput.value = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
+      btnPickSong.textContent = file.name.length > 24 ? file.name.slice(0, 22) + '…' : file.name;
       uploadSong();
     });
-
-    songNameInput.addEventListener('keydown', e => {
-      if (e.key === 'Enter' && pendingSongFile) uploadSong();
-    });
+    songNameInput.addEventListener('keydown', e => { if (e.key === 'Enter' && pendingSongFile) uploadSong(); });
 
     async function uploadSong() {
       const name = songNameInput.value.trim();
       const file = pendingSongFile;
-
       if (!name) { showSongMsg('Please enter a song name.', 'error'); return; }
       if (!file)  { showSongMsg('Please choose an audio file.', 'error'); return; }
-
-      // Build a safe filename: name + original extension
       const ext = (file.name.match(/\.[^.]+$/) || ['.mp3'])[0].toLowerCase();
       const safeFilename = name.replace(/[^a-zA-Z0-9 _\-()]/g, '_') + ext;
-
       btnPickSong.disabled = true;
       songProgressEl.classList.remove('hidden');
-      songProgressBar.style.width = '10%';
-      songProgressText.textContent = 'Getting upload URL...';
-
+      songProgressBar.style.width = '10%'; songProgressText.textContent = 'Getting upload URL…';
       try {
-        // Step 1: get a pre-signed URL from the server
-        const urlRes = await fetch('/api/admin/songs/upload-url', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: safeFilename, contentType: file.type || 'audio/mpeg' }),
-        });
-        if (!urlRes.ok) {
-          const err = await urlRes.json();
-          throw new Error(err.error || 'Failed to get upload URL');
-        }
+        const urlRes = await fetch('/api/admin/songs/upload-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filename: safeFilename, contentType: file.type || 'audio/mpeg' }) });
+        if (!urlRes.ok) { const err = await urlRes.json(); throw new Error(err.error || 'Failed to get upload URL'); }
         const { url, filename: finalFilename } = await urlRes.json();
-
-        songProgressBar.style.width = '30%';
-        songProgressText.textContent = 'Uploading to storage...';
-
-        // Step 2: upload directly to B2
-        const putRes = await fetch(url, {
-          method: 'PUT',
-          body: file,
-          headers: { 'Content-Type': file.type || 'audio/mpeg' },
-        });
+        songProgressBar.style.width = '30%'; songProgressText.textContent = 'Uploading to storage…';
+        const putRes = await fetch(url, { method: 'PUT', body: file, headers: { 'Content-Type': file.type || 'audio/mpeg' } });
         if (!putRes.ok) throw new Error('Upload failed: HTTP ' + putRes.status);
-
-        songProgressBar.style.width = '80%';
-        songProgressText.textContent = 'Registering song...';
-
-        // Step 3: register in the database
-        const regRes = await fetch('/api/admin/songs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, filename: finalFilename }),
-        });
-        if (!regRes.ok) {
-          const err = await regRes.json();
-          throw new Error(err.error || 'Failed to register song');
-        }
-
-        songProgressBar.style.width = '100%';
-        songProgressText.textContent = 'Done!';
+        songProgressBar.style.width = '80%'; songProgressText.textContent = 'Registering song…';
+        const regRes = await fetch('/api/admin/songs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, filename: finalFilename }) });
+        if (!regRes.ok) { const err = await regRes.json(); throw new Error(err.error || 'Failed to register song'); }
+        songProgressBar.style.width = '100%'; songProgressText.textContent = 'Done!';
         showSongMsg('Added: ' + name, 'success');
-
-        // Reset form
-        songNameInput.value = '';
-        btnPickSong.textContent = 'Choose File';
-        pendingSongFile = null;
-        songFileInput.value = '';
-
+        songNameInput.value = ''; btnPickSong.textContent = 'Choose File'; pendingSongFile = null; songFileInput.value = '';
         loadSongs();
-      } catch (err) {
-        showSongMsg(err.message, 'error');
-      } finally {
-        btnPickSong.disabled = false;
-        setTimeout(() => songProgressEl.classList.add('hidden'), 3000);
-      }
+      } catch (err) { showSongMsg(err.message, 'error'); }
+      finally { btnPickSong.disabled = false; setTimeout(() => songProgressEl.classList.add('hidden'), 3000); }
     }
 
     async function loadSongs() {
-      const res = await fetch('/api/songs');
-      if (!res.ok) return;
+      const res = await fetch('/api/songs'); if (!res.ok) return;
       const songs = await res.json();
-
       songListAdmin.innerHTML = '';
-      if (songs.length === 0) {
-        songListAdmin.innerHTML = '<li style="color: var(--text-secondary); font-size: 0.85rem; padding: 12px 0; list-style: none;">No songs yet.</li>';
-        return;
-      }
-
+      if (songs.length === 0) { songListAdmin.innerHTML = '<li class="empty-state">No songs yet.</li>'; return; }
       songs.forEach(s => {
         const li = document.createElement('li');
-        li.className = 'user-item';
-        li.innerHTML =
-          '<div class="user-info">' +
-            '<div>' +
-              '<div class="user-email">' + s.name + '</div>' +
-              '<div class="user-name">' + s.filename + '</div>' +
-            '</div>' +
-          '</div>' +
-          '<button class="btn-remove" data-id="' + s.id + '" data-name="' + s.name + '">Remove</button>';
+        li.className = 'item-row';
+        li.innerHTML = `
+          <div class="item-row-info">
+            <div>
+              <div class="item-primary">${s.name}</div>
+              <div class="item-secondary">${s.filename}</div>
+            </div>
+          </div>
+          <div class="item-actions">
+            <button class="admin-btn-ghost btn-remove" data-id="${s.id}" data-name="${s.name}">Remove</button>
+          </div>`;
         songListAdmin.appendChild(li);
-
-        li.querySelector('.btn-remove').addEventListener('click', async (e) => {
-          const id = e.target.dataset.id;
-          const nm = e.target.dataset.name;
-          if (!confirm('Remove "' + nm + '"? It will disappear from all playlists.')) return;
+        li.querySelector('.btn-remove').addEventListener('click', async e => {
+          const id = e.target.dataset.id, nm = e.target.dataset.name;
+          if (!confirm(`Remove "${nm}"? It will disappear from all playlists.`)) return;
           const r = await fetch('/api/admin/songs/' + id, { method: 'DELETE' });
-          if (r.ok) {
-            showSongMsg('Removed: ' + nm, 'success');
-            loadSongs();
-          } else {
-            showSongMsg('Failed to remove song.', 'error');
-          }
+          if (r.ok) { showSongMsg('Removed: ' + nm, 'success'); loadSongs(); }
+          else { showSongMsg('Failed to remove song.', 'error'); }
         });
       });
     }
 
-    // --- Archived sessions ---------------------------------------------
-
+    // ── Archived sessions ─────────────────────────────────────────
     const archivedList = document.getElementById('archived-list');
-    const archivedMsg = document.getElementById('archived-msg');
+    const archivedMsg  = document.getElementById('archived-msg');
 
     function showArchivedMsg(text, kind) {
-      archivedMsg.textContent = text;
-      archivedMsg.className = 'msg ' + kind;
+      archivedMsg.textContent = text; archivedMsg.className = 'msg ' + kind;
       setTimeout(() => archivedMsg.classList.add('hidden'), 4000);
     }
 
-    function escapeHtml(str) {
-      const d = document.createElement('div');
-      d.textContent = str == null ? '' : str;
-      return d.innerHTML;
-    }
+    function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str == null ? '' : str; return d.innerHTML; }
 
-    // "251213_000100" -> "Dec 13, 2025, 12:01 AM", matching the mixer's labels
     function sessionLabelFromId(id) {
       const m = /^(\d{2})(\d{2})(\d{2})_(\d{2})(\d{2})/.exec(id);
       if (!m) return id;
       const [, yy, mm, dd, HH, MM] = m;
       const date = new Date(`20${yy}-${mm}-${dd}T${HH}:${MM}:00`);
       if (isNaN(date)) return id;
-      return date.toLocaleString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric',
-        hour: 'numeric', minute: '2-digit', hour12: true
-      });
+      return date.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
     }
 
     async function loadArchivedSessions() {
-      const res = await fetch('/api/admin/archived-sessions');
-      if (!res.ok) return;
+      const res = await fetch('/api/admin/archived-sessions'); if (!res.ok) return;
       const rows = await res.json();
-
       archivedList.innerHTML = '';
-      if (rows.length === 0) {
-        archivedList.innerHTML = '<li style="color: var(--text-secondary); font-size: 0.85rem; padding: 12px 0; list-style: none;">No archived sessions.</li>';
-        return;
-      }
-
+      if (rows.length === 0) { archivedList.innerHTML = '<li class="empty-state">No archived sessions.</li>'; return; }
       rows.forEach(r => {
         const who = r.archived_by_name || r.archived_by_email || 'someone';
         const tags = r.tags && r.tags.length ? '  ' + r.tags.map(t => '#' + t).join(' ') : '';
-        const title = escapeHtml(sessionLabelFromId(r.session_id)) +
-          (r.custom_name ? ' — ' + escapeHtml(r.custom_name) : '');
-
+        const title = escapeHtml(sessionLabelFromId(r.session_id)) + (r.custom_name ? ' — ' + escapeHtml(r.custom_name) : '');
         const li = document.createElement('li');
-        li.className = 'user-item';
-        li.innerHTML =
-          '<div class="user-info">' +
-            '<div>' +
-              '<div class="user-email">' + title + escapeHtml(tags) + '</div>' +
-              '<div class="user-name">' + escapeHtml(r.session_id) +
-                ' · archived by ' + escapeHtml(who) +
-                (r.archived_at ? ' on ' + escapeHtml(String(r.archived_at).slice(0, 10)) : '') +
-              '</div>' +
-            '</div>' +
-          '</div>' +
-          '<button class="btn-restore" data-id="' + escapeHtml(r.session_id) + '">Restore</button>';
+        li.className = 'item-row';
+        li.innerHTML = `
+          <div class="item-row-info">
+            <div>
+              <div class="item-primary">${title}${escapeHtml(tags)}</div>
+              <div class="item-secondary">${escapeHtml(r.session_id)} · archived by ${escapeHtml(who)}${r.archived_at ? ' · ' + escapeHtml(String(r.archived_at).slice(0, 10)) : ''}</div>
+            </div>
+          </div>
+          <div class="item-actions">
+            <button class="admin-btn-accent btn-restore" data-id="${escapeHtml(r.session_id)}">Restore</button>
+          </div>`;
         archivedList.appendChild(li);
-
-        li.querySelector('.btn-restore').addEventListener('click', async (e) => {
-          const id = e.target.dataset.id;
-          const btn = e.target;
-          btn.disabled = true;
+        li.querySelector('.btn-restore').addEventListener('click', async e => {
+          const id = e.target.dataset.id; const btn = e.target; btn.disabled = true;
           const resp = await fetch('/api/admin/archived-sessions/' + encodeURIComponent(id), { method: 'DELETE' });
-          if (resp.ok) {
-            showArchivedMsg('Restored ' + id + ' — it is back in the session list.', 'success');
-            loadArchivedSessions();
-          } else {
-            btn.disabled = false;
-            showArchivedMsg('Failed to restore ' + id + '.', 'error');
-          }
+          if (resp.ok) { showArchivedMsg('Restored ' + id + ' — it is back in the session list.', 'success'); loadArchivedSessions(); }
+          else { btn.disabled = false; showArchivedMsg('Failed to restore ' + id + '.', 'error'); }
         });
       });
     }
