@@ -585,4 +585,15 @@
 
     hideLoading();
   });
+
+  // The public demo has a single session, so open it rather than make
+  // visitors find it in the picker
+  if (typeof Demo !== 'undefined' && Demo.active) {
+    if (sessionsList.length > 0) {
+      sessionSelect.value = sessionsList[0].id;
+      sessionSelect.dispatchEvent(new Event('change'));
+    } else {
+      showLoading('The demo is not set up yet. Check back soon.');
+    }
+  }
 })();

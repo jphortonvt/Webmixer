@@ -356,6 +356,25 @@
       line-height: 1.6;
     }
 
+    /* Public demo */
+    .demo-block { display: flex; flex-direction: column; gap: var(--r-space-sm); }
+    .demo-sub {
+      font-family: var(--r-font-family-mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--r-color-muted);
+    }
+    .demo-link { font-family: var(--r-font-family-mono); font-size: 13px; color: var(--r-color-ink); word-break: break-all; }
+    .demo-status { font-family: var(--r-font-family-mono); font-size: 12px; color: var(--r-color-muted); letter-spacing: 0.04em; }
+    .admin-select { flex: 1; min-width: 0; }
+    .demo-time { flex: 0 0 90px; }
+    .demo-icon-select { flex: 0 0 auto; padding: 6px 8px; }
+    .demo-comment-body { white-space: normal; }
+    .item-row.is-reply { padding-left: 34px; }
+    /* An empty list would otherwise show its ruled background as a dark bar */
+    .item-list .empty-state { background: var(--r-color-paper); padding: 12px 14px; }
+
     /* Empty state */
     .empty-state {
       font-family: var(--r-font-family-mono);
@@ -441,6 +460,63 @@
         </div>
 
         <div class="upload-results hidden" id="upload-results"></div>
+      </section>
+
+      <!-- 05 Public Demo -->
+      <section class="admin-cell" id="demo-section">
+        <div class="section-label"><span class="r-tag">05</span>Public Demo</div>
+        <p class="admin-desc">One session anyone can open without signing in. Visitors can play it, move faders and read the comments. Saving mixes, commenting and mixdowns only show a "Demo only" message.</p>
+
+        <div class="row-group" style="align-items:center;flex-wrap:wrap">
+          <a id="demo-link" class="demo-link" href="/demo" target="_blank" rel="noopener"></a>
+          <button id="btn-demo-copy-link" class="admin-btn-ghost">Copy link</button>
+        </div>
+
+        <div id="demo-msg" class="msg hidden"></div>
+
+        <div class="demo-block">
+          <div class="demo-sub">Name</div>
+          <div class="row-group">
+            <input type="text" id="demo-name" class="admin-input" maxlength="80" placeholder="Shown in the session picker, e.g. Friday rehearsal">
+            <button id="btn-demo-name" class="admin-btn">Save</button>
+          </div>
+        </div>
+
+        <div class="demo-block">
+          <div class="demo-sub">Tracks</div>
+          <div id="demo-status" class="demo-status">Loading…</div>
+          <div class="row-group">
+            <select id="demo-source" class="admin-input admin-select" aria-label="Session to use as the demo">
+              <option value="">Loading sessions…</option>
+            </select>
+            <button id="btn-demo-use-session" class="admin-btn">Use session</button>
+          </div>
+          <div class="row-group" style="align-items:center;flex-wrap:wrap">
+            <button id="btn-demo-upload" class="admin-btn-ghost">Or upload WAV files</button>
+            <input type="file" id="demo-file-input" accept=".wav,audio/wav" multiple style="display:none">
+          </div>
+          <div class="progress-wrap hidden" id="demo-progress">
+            <div class="progress-track"><div class="progress-fill" id="demo-progress-bar"></div></div>
+            <div class="progress-label" id="demo-progress-text">Uploading…</div>
+          </div>
+          <ul class="item-list" id="demo-tracks"></ul>
+        </div>
+
+        <div class="demo-block">
+          <div class="demo-sub">Sample comments</div>
+          <div class="row-group" style="flex-wrap:wrap">
+            <input type="text" id="demo-comment-author" class="admin-input" maxlength="40" placeholder="Name, e.g. Sam">
+            <input type="text" id="demo-comment-time" class="admin-input demo-time" placeholder="mm:ss" aria-label="Time in the song">
+          </div>
+          <select id="demo-comment-parent" class="admin-input" aria-label="New comment or reply">
+            <option value="">New comment</option>
+          </select>
+          <div class="row-group">
+            <input type="text" id="demo-comment-body" class="admin-input" maxlength="1000" placeholder="Comment…">
+            <button id="btn-demo-comment" class="admin-btn">Add</button>
+          </div>
+          <ul class="item-list" id="demo-comments"></ul>
+        </div>
       </section>
 
     </div><!-- /left col -->
@@ -944,6 +1020,243 @@
         });
       });
     }
+
+    // ── Public demo ───────────────────────────────────────────────
+    const demoLink        = document.getElementById('demo-link');
+    const demoMsg         = document.getElementById('demo-msg');
+    const demoName        = document.getElementById('demo-name');
+    const demoStatus      = document.getElementById('demo-status');
+    const demoSource      = document.getElementById('demo-source');
+    const btnDemoUse      = document.getElementById('btn-demo-use-session');
+    const btnDemoUpload   = document.getElementById('btn-demo-upload');
+    const demoFileInput   = document.getElementById('demo-file-input');
+    const demoProgress    = document.getElementById('demo-progress');
+    const demoProgressBar = document.getElementById('demo-progress-bar');
+    const demoProgressText = document.getElementById('demo-progress-text');
+    const demoTracks      = document.getElementById('demo-tracks');
+    const demoAuthor      = document.getElementById('demo-comment-author');
+    const demoTime        = document.getElementById('demo-comment-time');
+    const demoParent      = document.getElementById('demo-comment-parent');
+    const demoBody        = document.getElementById('demo-comment-body');
+    const demoCommentList = document.getElementById('demo-comments');
+    const DEMO_ICONS = [['🎸', 'Guitar'], ['🔊', 'Bass'], ['🎹', 'Keyboard'], ['🥁', 'Drums'], ['🎤', 'Vocals'], ['🎵', 'Default']];
+    const DEMO_TRACK_PATTERN = /^TRACK\d+([LR]|_ST)?\.WAV$/i;
+    let demo = null;
+    let demoPollTimer = null;
+
+    const demoUrl = location.origin + '/demo';
+    demoLink.href = demoUrl;
+    demoLink.textContent = demoUrl;
+
+    function showDemoMsg(text, kind) {
+      demoMsg.textContent = text; demoMsg.className = 'msg ' + kind;
+      clearTimeout(showDemoMsg.timer);
+      showDemoMsg.timer = setTimeout(() => demoMsg.classList.add('hidden'), 5000);
+    }
+
+    function fmtDemoTime(sec) {
+      const m = Math.floor(sec / 60), s = Math.floor(sec % 60);
+      return `${m}:${String(s).padStart(2, '0')}`;
+    }
+
+    // "1:23" or plain seconds
+    function parseDemoTime(str) {
+      const raw = String(str || '').trim();
+      if (!raw) return null;
+      if (raw.includes(':')) {
+        const [m, s] = raw.split(':');
+        const mins = parseInt(m, 10), secs = parseFloat(s);
+        return Number.isFinite(mins) && Number.isFinite(secs) ? mins * 60 + secs : null;
+      }
+      const n = parseFloat(raw);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    async function demoRequest(url, method, body) {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+
+    async function loadDemo() {
+      const res = await fetch('/api/admin/demo'); if (!res.ok) return;
+      demo = await res.json();
+      if (document.activeElement !== demoName) demoName.value = demo.name;
+      renderDemoStatus();
+      renderDemoTracks();
+      renderDemoComments();
+
+      // Follow a copy or transcode until it settles
+      clearTimeout(demoPollTimer);
+      if (demo.busy) demoPollTimer = setTimeout(loadDemo, 2000);
+    }
+
+    function renderDemoStatus() {
+      const busy = demo.busy;
+      btnDemoUse.disabled = busy; btnDemoUpload.disabled = busy;
+      if (busy || demo.job.stage === 'error') {
+        demoStatus.textContent = demo.job.message;
+        return;
+      }
+      if (demo.tracks.length === 0) { demoStatus.textContent = 'No demo tracks yet. Pick a session or upload WAV files.'; return; }
+      const parts = [`${demo.tracks.length} track${demo.tracks.length === 1 ? '' : 's'}`];
+      parts.push(demo.ready ? 'ready' : 'prepares when someone opens it');
+      if (demo.source) parts.push(demo.source);
+      demoStatus.textContent = parts.join(' · ');
+    }
+
+    function renderDemoTracks() {
+      demoTracks.innerHTML = '';
+      demo.tracks.forEach(t => {
+        const li = document.createElement('li');
+        li.className = 'item-row';
+        const options = DEMO_ICONS.map(([icon, label]) =>
+          `<option value="${icon}"${(t.icon || '🎵') === icon ? ' selected' : ''}>${icon} ${label}</option>`).join('');
+        li.innerHTML = `
+          <div class="item-row-info"><div class="item-primary">${escapeHtml(t.name.replace(/\.wav$/i, ''))}</div></div>
+          <select class="admin-input demo-icon-select" aria-label="Track type for ${escapeHtml(t.name)}">${options}</select>`;
+        li.querySelector('select').addEventListener('change', async e => {
+          try { await demoRequest('/api/admin/demo/icons', 'PUT', { track_name: t.name, icon: e.target.value }); }
+          catch (err) { showDemoMsg(err.message, 'error'); }
+        });
+        demoTracks.appendChild(li);
+      });
+    }
+
+    function renderDemoComments() {
+      const tops = demo.comments.filter(c => !c.parent_id);
+      const current = demoParent.value;
+      demoParent.innerHTML = '<option value="">New comment</option>' + tops.map(c =>
+        `<option value="${c.id}">Reply to ${escapeHtml(c.author_name)} @ ${fmtDemoTime(c.timestamp_seconds)}: ${escapeHtml(c.body.slice(0, 40))}</option>`).join('');
+      if (tops.some(c => String(c.id) === current)) demoParent.value = current;
+      demoTime.disabled = !!demoParent.value;
+
+      demoCommentList.innerHTML = '';
+      if (demo.comments.length === 0) { demoCommentList.innerHTML = '<li class="empty-state">No sample comments yet.</li>'; return; }
+      // Each comment followed by its replies, as the mixer shows them
+      const ordered = tops.flatMap(c => [c, ...demo.comments.filter(r => r.parent_id === c.id)]);
+      ordered.forEach(c => {
+        const li = document.createElement('li');
+        li.className = 'item-row' + (c.parent_id ? ' is-reply' : '');
+        li.innerHTML = `
+          <div class="item-row-info">
+            <div>
+              <div class="item-primary demo-comment-body">${escapeHtml(c.body)}</div>
+              <div class="item-secondary">${c.parent_id ? 'Reply · ' : ''}${escapeHtml(c.author_name)} @ ${fmtDemoTime(c.timestamp_seconds)}</div>
+            </div>
+          </div>
+          <div class="item-actions"><button class="admin-btn-ghost">Delete</button></div>`;
+        li.querySelector('button').addEventListener('click', async () => {
+          if (!c.parent_id && demo.comments.some(r => r.parent_id === c.id) && !confirm('Delete this comment and its replies?')) return;
+          try { await demoRequest('/api/admin/demo/comments/' + c.id, 'DELETE'); loadDemo(); }
+          catch (err) { showDemoMsg(err.message, 'error'); }
+        });
+        demoCommentList.appendChild(li);
+      });
+    }
+
+    async function loadDemoSources() {
+      const res = await fetch('/api/sessions'); if (!res.ok) return;
+      const sessions = (await res.json()).reverse(); // newest first
+      demoSource.innerHTML = '<option value="">Pick a band session…</option>' + sessions.map(s =>
+        `<option value="${escapeHtml(s.id)}">${escapeHtml(s.label)}${s.customName ? ' — ' + escapeHtml(s.customName) : ''} (${s.trackCount} tracks)</option>`).join('');
+    }
+
+    function confirmReplace() {
+      return !demo || demo.tracks.length === 0 ||
+        confirm(`Replace the demo's ${demo.tracks.length} tracks? Sample comments stay; delete any that no longer fit.`);
+    }
+
+    document.getElementById('btn-demo-copy-link').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(demoUrl); showDemoMsg('Link copied.', 'success'); }
+      catch (e) { showDemoMsg('Copy failed. Select the link and copy it instead.', 'error'); }
+    });
+
+    document.getElementById('btn-demo-name').addEventListener('click', async () => {
+      try { await demoRequest('/api/admin/demo/name', 'PUT', { name: demoName.value }); showDemoMsg('Name saved.', 'success'); }
+      catch (err) { showDemoMsg(err.message, 'error'); }
+    });
+
+    btnDemoUse.addEventListener('click', async () => {
+      if (!demoSource.value) { showDemoMsg('Pick a session first.', 'error'); return; }
+      if (!confirmReplace()) return;
+      try { await demoRequest('/api/admin/demo/copy', 'POST', { sessionId: demoSource.value }); loadDemo(); }
+      catch (err) { showDemoMsg(err.message, 'error'); }
+    });
+
+    btnDemoUpload.addEventListener('click', () => demoFileInput.click());
+    demoFileInput.addEventListener('change', async () => {
+      const files = Array.from(demoFileInput.files).filter(f => /\.wav$/i.test(f.name))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+      demoFileInput.value = '';
+      if (files.length === 0) { showDemoMsg('Choose one or more .wav files.', 'error'); return; }
+
+      // The mixer only loads files named like TRACK01.WAV, so anything else is
+      // renamed in order
+      const keepNames = files.every(f => DEMO_TRACK_PATTERN.test(f.name));
+      const targets = files.map((f, i) => keepNames ? f.name.toUpperCase() : `TRACK${String(i + 1).padStart(2, '0')}.WAV`);
+      const renameNote = keepNames ? '' : `\n\nThey will be named TRACK01 to TRACK${String(files.length).padStart(2, '0')} in this order:\n${files.map(f => f.name).join('\n')}`;
+      const sizeMB = (files.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(0);
+      const replaceNote = demo && demo.tracks.length ? `\n\nThis replaces the demo's ${demo.tracks.length} tracks. Sample comments stay.` : '';
+      if (!confirm(`Upload ${files.length} WAV file(s) (${sizeMB} MB) as the demo?${replaceNote}${renameNote}`)) return;
+
+      btnDemoUse.disabled = true; btnDemoUpload.disabled = true;
+      demoProgress.classList.remove('hidden');
+      let uploaded = 0;
+      try {
+        await demoRequest('/api/admin/demo/clear', 'POST');
+        for (let i = 0; i < files.length; i++) {
+          demoProgressBar.style.width = Math.round((i / files.length) * 100) + '%';
+          demoProgressText.textContent = `Uploading ${i + 1}/${files.length}: ${files[i].name}`;
+          const { url } = await demoRequest('/api/admin/demo/upload-url', 'POST', { filename: targets[i] });
+          const put = await fetch(url, { method: 'PUT', body: files[i], headers: { 'Content-Type': 'audio/wav' } });
+          if (!put.ok) throw new Error(`Upload of ${files[i].name} failed: ${put.status}`);
+          uploaded++;
+        }
+        demoProgressBar.style.width = '100%'; demoProgressText.textContent = 'Preparing tracks…';
+        showDemoMsg(`Uploaded ${uploaded} file(s).`, 'success');
+      } catch (err) {
+        showDemoMsg(err.message, 'error');
+      } finally {
+        // Prepare whatever made it up, so a failed file doesn't leave the demo empty
+        await demoRequest('/api/admin/demo/prepare', 'POST', { count: uploaded }).catch(() => {});
+        setTimeout(() => demoProgress.classList.add('hidden'), 2000);
+        loadDemo();
+      }
+    });
+
+    demoParent.addEventListener('change', () => {
+      demoTime.disabled = !!demoParent.value;
+      if (demoParent.value) {
+        const parent = demo.comments.find(c => String(c.id) === demoParent.value);
+        if (parent) demoTime.value = fmtDemoTime(parent.timestamp_seconds);
+      }
+    });
+
+    async function addDemoComment() {
+      const seconds = demoParent.value ? 0 : parseDemoTime(demoTime.value);
+      if (!demoAuthor.value.trim() || !demoBody.value.trim() || seconds == null) {
+        showDemoMsg('Add a name, a time (mm:ss) and the comment.', 'error'); return;
+      }
+      try {
+        await demoRequest('/api/admin/demo/comments', 'POST', {
+          author_name: demoAuthor.value, timestamp_seconds: seconds, body: demoBody.value,
+          parent_id: demoParent.value ? Number(demoParent.value) : null
+        });
+        demoBody.value = '';
+        loadDemo();
+      } catch (err) { showDemoMsg(err.message, 'error'); }
+    }
+    document.getElementById('btn-demo-comment').addEventListener('click', addDemoComment);
+    demoBody.addEventListener('keydown', e => { if (e.key === 'Enter') addDemoComment(); });
+
+    loadDemo();
+    loadDemoSources();
 
     loadSongs();
     loadArchivedSessions();

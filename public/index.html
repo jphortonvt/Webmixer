@@ -14,8 +14,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Geist:wght@200;300;400;500&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script>
-    // People who chose the classic interface go straight there
-    try { if (localStorage.getItem('traxx-ui') === 'classic') location.replace('/classic.html' + location.search + location.hash); } catch (e) {}
+    // People who chose the classic interface go straight there (not the public demo)
+    try { if (localStorage.getItem('traxx-ui') === 'classic' && !/^\/demo\/?$/.test(location.pathname)) location.replace('/classic.html' + location.search + location.hash); } catch (e) {}
   </script>
   <script>
     // Apply a saved theme choice before first paint (no light flash in dark mode)
@@ -239,6 +239,7 @@
 
   </div>
 
+  <script src="/js/demo.js"></script>
   <script src="/js/mixer.js"></script>
   <script src="/js/transport.js"></script>
   <script src="/js/ui.js"></script>

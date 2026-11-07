@@ -15,6 +15,7 @@ const adminRoutes = require('./routes/admin');
 const commentRoutes = require('./routes/comments');
 const mixRoutes = require('./routes/mixes');
 const playlistRoutes = require('./routes/playlist');
+const demo = require('./routes/demo');
 const { ensureAuthenticated } = require('./middleware/auth');
 const { getSessions, getSessionTracks } = require('./lib/sessions');
 const { transcodeSession, isSessionCached } = require('./lib/transcode');
@@ -79,6 +80,14 @@ ready.then(() => {
   app.get('/login.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
   });
+
+  // Public demo: the normal mixer page, read-only, no sign-in (routes/demo.js)
+  app.get(['/demo', '/demo/'], (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  });
+  app.use('/demo-audio', demo.audio);
+  app.use('/api/demo', demo.publicRouter);
+  app.use('/api/admin/demo', demo.adminRouter);
 
   // Auth routes (no auth required)
   app.use('/auth', authRoutes);
@@ -151,6 +160,9 @@ ready.then(() => {
 
     // Background: pre-download all songs to local cache
     precacheSongs();
+
+    // Background: get the demo's MP3s back after a deploy wiped the disk
+    demo.prepare();
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);

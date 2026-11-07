@@ -1074,3 +1074,51 @@
   .spinner { animation: none; }
   .rv2 * { transition: none !important; }
 }
+
+/* ---------- Public demo (/demo, see js/demo.js) ---------- */
+
+/* No account to show, and Classic has no demo mode */
+.is-demo .user-info, .is-demo .classic-link { display: none !important; }
+
+.demo-badge {
+  padding: 3px 8px;
+  background: var(--r-color-accent);
+  color: var(--r-color-on-accent);
+  font-family: var(--r-font-family-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.demo-toast {
+  position: fixed;
+  /* Centred with auto margins: left: 50% would cap its width at half the screen */
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: max-content;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 12px 18px;
+  background: var(--r-color-ink);
+  color: var(--r-color-paper);
+  border-left: 4px solid var(--r-color-accent);
+  font-size: 13px;
+  line-height: 1.4;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(12px);
+  transition: opacity 180ms, transform 180ms;
+}
+.demo-toast strong {
+  font-family: var(--r-font-family-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.demo-toast.visible { opacity: 1; transform: none; }
