@@ -6,7 +6,7 @@ const passport = require('passport');
 const path = require('path');
 const fs = require('fs');
 
-const { ready, seedAdmin, getDb } = require('./lib/db');
+const { ready, seedAdmin, getDb, flushToB2, getReadOnlyReason } = require('./lib/db');
 const { SqliteSessionStore } = require('./lib/session-store');
 const { configurePassport } = require('./lib/passport');
 const apiRoutes = require('./routes/api');
@@ -25,6 +25,8 @@ const PORT = process.env.PORT || 3000;
 const CACHE_DIR = path.resolve(process.env.CACHE_DIR || './cache');
 const DATA_DIR = path.resolve(__dirname, 'data');
 const SONGS_CACHE_DIR = path.resolve(process.env.SONGS_CACHE_DIR || './songs-cache');
+// Hosts give a process a limited time between SIGTERM and SIGKILL
+const SHUTDOWN_FLUSH_TIMEOUT_MS = 20000;
 
 // Ensure directories exist
 [CACHE_DIR, DATA_DIR, SONGS_CACHE_DIR].forEach(dir => {
@@ -142,6 +144,16 @@ ready.then(() => {
     res.sendFile(localPath);
   });
 
+  // Read-only mode (lib/db.js): the copy on B2 moved on without us, so any
+  // write accepted now would be lost. Say so instead of pretending to save.
+  app.use('/api', (req, res, next) => {
+    const reason = getReadOnlyReason();
+    if (reason && !['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      return res.status(503).json({ error: 'The server is in read-only mode and cannot save changes right now. Please try again in a few minutes.' });
+    }
+    next();
+  });
+
   // API routes
   app.use('/api', apiRoutes);
   app.use('/api', commentRoutes);
@@ -149,7 +161,15 @@ ready.then(() => {
   app.use('/api', playlistRoutes);
   app.use('/api/admin', adminRoutes);
 
-  app.listen(PORT, () => {
+  // Anything that slipped past the check above (or a write outside /api)
+  app.use((err, req, res, next) => {
+    if (err && err.code === 'DB_READ_ONLY' && !res.headersSent) {
+      return res.status(503).json({ error: 'The server is in read-only mode and cannot save changes right now. Please try again in a few minutes.' });
+    }
+    next(err);
+  });
+
+  const server = app.listen(PORT, () => {
     console.log(`TRAXXXXXXXXS server running at http://localhost:${PORT}`);
 
     // Configure B2 CORS for direct browser uploads
@@ -164,6 +184,35 @@ ready.then(() => {
     // Background: get the demo's MP3s back after a deploy wiped the disk
     demo.prepare();
   });
+
+  // Deploys and restarts send SIGTERM. Writes sit locally for a few seconds
+  // before they are uploaded, so push them to B2 before going away.
+  let shuttingDown = false;
+  const shutdown = async (signal) => {
+    if (shuttingDown) process.exit(1); // second signal: stop waiting
+    shuttingDown = true;
+    console.log(`[SHUTDOWN] ${signal} received — saving database to B2...`);
+    server.close();
+
+    let code = 0;
+    let timer;
+    try {
+      await Promise.race([
+        flushToB2(),
+        new Promise((_, reject) => {
+          timer = setTimeout(() => reject(new Error('timed out')), SHUTDOWN_FLUSH_TIMEOUT_MS);
+        }),
+      ]);
+      console.log('[SHUTDOWN] Database is saved. Bye.');
+    } catch (err) {
+      console.error(`[SHUTDOWN] Could not save the database to B2: ${err.message}. Recent changes exist only in the local file.`);
+      code = 1;
+    }
+    clearTimeout(timer);
+    process.exit(code);
+  };
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }).catch(err => {
   console.error('Failed to initialize database:', err);
   process.exit(1);

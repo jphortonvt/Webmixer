@@ -89,9 +89,35 @@ router.delete('/users/:id', ensureAdmin, (req, res) => {
     return res.status(400).json({ error: 'Cannot remove admin' });
   }
 
-  // Delete their comments too
-  db.prepare('DELETE FROM comments WHERE user_id = ?').run(userId);
-  db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  // Everything that points at the user goes with them, in one transaction —
+  // with foreign keys enforced, a leftover reference would block the delete.
+  db.transaction(() => {
+    // Sign them out everywhere
+    db.prepare("DELETE FROM http_sessions WHERE json_extract(data, '$.passport.user') = ? OR json_extract(data, '$.user.id') = ?")
+      .run(userId, userId);
+
+    // Their comments, plus every reply underneath them (whoever wrote it)
+    db.prepare(`
+      WITH RECURSIVE doomed(id) AS (
+        SELECT id FROM comments WHERE user_id = ?
+        UNION
+        SELECT c.id FROM comments c JOIN doomed d ON c.parent_id = d.id
+      )
+      DELETE FROM comments WHERE id IN (SELECT id FROM doomed)
+    `).run(userId);
+
+    db.prepare('DELETE FROM mix_presets WHERE user_id = ?').run(userId);
+    db.prepare('DELETE FROM playlist_items WHERE user_id = ?').run(userId);
+
+    // Shared things they touched stay, minus the attribution
+    db.prepare('UPDATE songs SET added_by = NULL WHERE added_by = ?').run(userId);
+    db.prepare('UPDATE session_names SET updated_by = NULL WHERE updated_by = ?').run(userId);
+    db.prepare('UPDATE session_tags SET created_by = NULL WHERE created_by = ?').run(userId);
+    db.prepare('UPDATE session_starred SET starred_by = NULL WHERE starred_by = ?').run(userId);
+    db.prepare('UPDATE session_archived SET archived_by = NULL WHERE archived_by = ?').run(userId);
+
+    db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+  });
   res.json({ message: 'User removed' });
 });
 

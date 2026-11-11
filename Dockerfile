@@ -20,4 +20,6 @@ COPY . .
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["npm", "start"]
+# Run node directly: under `npm start`, SIGTERM does not reliably reach the
+# server, and it needs it to save the database before a deploy replaces it.
+CMD ["node", "server.js"]

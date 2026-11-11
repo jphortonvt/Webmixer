@@ -53,20 +53,11 @@ router.post('/sessions/:id/mix', ensureAuthenticated, (req, res) => {
     finalSettings = JSON.stringify(settings);
   }
 
-  // Upsert: try update first, then insert
-  const existing = db.prepare(
-    'SELECT id FROM mix_presets WHERE user_id = ? AND session_id = ?'
-  ).get(req.user.id, sessionId);
-
-  if (existing) {
-    db.prepare(
-      'UPDATE mix_presets SET settings = ?, updated_at = datetime(\'now\') WHERE id = ?'
-    ).run(finalSettings, existing.id);
-  } else {
-    db.prepare(
-      'INSERT INTO mix_presets (user_id, session_id, settings) VALUES (?, ?, ?)'
-    ).run(req.user.id, sessionId, finalSettings);
-  }
+  db.prepare(`
+    INSERT INTO mix_presets (user_id, session_id, settings) VALUES (?, ?, ?)
+    ON CONFLICT(user_id, session_id)
+    DO UPDATE SET settings = excluded.settings, updated_at = datetime('now')
+  `).run(req.user.id, sessionId, finalSettings);
 
   res.json({
     session_id: sessionId,

@@ -89,9 +89,18 @@ router.delete('/comments/:commentId', ensureAuthenticated, (req, res) => {
     return res.status(403).json({ error: 'Not authorized' });
   }
 
-  // Delete replies first, then the comment
-  db.prepare('DELETE FROM comments WHERE parent_id = ?').run(commentId);
-  db.prepare('DELETE FROM comments WHERE id = ?').run(commentId);
+  // The comment and everything beneath it, however deep the thread goes —
+  // one statement, so it is all-or-nothing
+  db.transaction(() => {
+    db.prepare(`
+      WITH RECURSIVE subtree(id) AS (
+        SELECT id FROM comments WHERE id = ?
+        UNION
+        SELECT c.id FROM comments c JOIN subtree s ON c.parent_id = s.id
+      )
+      DELETE FROM comments WHERE id IN (SELECT id FROM subtree)
+    `).run(commentId);
+  });
   res.json({ message: 'Comment deleted' });
 });
 

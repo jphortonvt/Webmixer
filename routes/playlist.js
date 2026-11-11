@@ -79,8 +79,10 @@ router.delete('/songs/:id', ensureAuthenticated, async (req, res) => {
   }
 
   try {
-    db.prepare('DELETE FROM playlist_items WHERE song_id = ?').run(songId);
-    db.prepare('DELETE FROM songs WHERE id = ?').run(songId);
+    db.transaction(() => {
+      db.prepare('DELETE FROM playlist_items WHERE song_id = ?').run(songId);
+      db.prepare('DELETE FROM songs WHERE id = ?').run(songId);
+    });
   } catch (err) {
     console.error('[SONGS] Delete error:', err);
     return res.status(500).json({ error: 'Failed to delete song' });
@@ -114,26 +116,33 @@ router.put('/playlist/order', ensureAuthenticated, (req, res) => {
   const db = getDb();
   const userId = req.user.id;
 
-  // Carry the enabled flags across the wipe-and-reinsert below, or reordering
-  // would silently switch every disabled song back on.
-  const wasEnabled = {};
-  for (const row of db.prepare('SELECT song_id, enabled FROM playlist_items WHERE user_id = ?').all(userId)) {
-    wasEnabled[row.song_id] = row.enabled;
-  }
-
-  // Wipe existing order and re-insert
-  db.prepare('DELETE FROM playlist_items WHERE user_id = ?').run(userId);
-
-  const ins = db.prepare(
-    'INSERT INTO playlist_items (user_id, song_id, position, enabled) VALUES (?, ?, ?, ?)'
-  );
-  songIds.forEach((songId, pos) => {
-    try {
-      const id = parseInt(songId, 10);
-      ins.run(userId, id, pos, wasEnabled[id] != null ? wasEnabled[id] : 1);
-    } catch (_) {
-      // Skip invalid song ids
+  // One transaction: a failure part-way must not leave the user with a
+  // wiped or half-written order.
+  db.transaction(() => {
+    // Carry the enabled flags across the wipe-and-reinsert below, or reordering
+    // would silently switch every disabled song back on.
+    const wasEnabled = {};
+    for (const row of db.prepare('SELECT song_id, enabled FROM playlist_items WHERE user_id = ?').all(userId)) {
+      wasEnabled[row.song_id] = row.enabled;
     }
+
+    // Wipe existing order and re-insert
+    db.prepare('DELETE FROM playlist_items WHERE user_id = ?').run(userId);
+
+    const ins = db.prepare(
+      'INSERT INTO playlist_items (user_id, song_id, position, enabled) VALUES (?, ?, ?, ?)'
+    );
+    songIds.forEach((songId, pos) => {
+      const id = parseInt(songId, 10);
+      if (isNaN(id)) return;
+      try {
+        ins.run(userId, id, pos, wasEnabled[id] != null ? wasEnabled[id] : 1);
+      } catch (err) {
+        // Skip ids that are not songs (foreign key) or appear twice (unique);
+        // anything else is a real failure and undoes the whole reorder
+        if (!/constraint/i.test(err.message || '')) throw err;
+      }
+    });
   });
 
   res.json({ ok: true });
@@ -192,8 +201,10 @@ router.delete('/admin/songs/:id', ensureAdmin, (req, res) => {
   const song = db.prepare('SELECT * FROM songs WHERE id = ?').get(songId);
   if (!song) return res.status(404).json({ error: 'Song not found' });
 
-  db.prepare('DELETE FROM playlist_items WHERE song_id = ?').run(songId);
-  db.prepare('DELETE FROM songs WHERE id = ?').run(songId);
+  db.transaction(() => {
+    db.prepare('DELETE FROM playlist_items WHERE song_id = ?').run(songId);
+    db.prepare('DELETE FROM songs WHERE id = ?').run(songId);
+  });
 
   res.json({ message: 'Song deleted' });
 });

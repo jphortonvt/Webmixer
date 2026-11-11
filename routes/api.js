@@ -71,14 +71,11 @@ router.put('/sessions/:id/name', ensureAuthenticated, (req, res) => {
   }
 
   const db = getDb();
-  const existing = db.prepare('SELECT session_id FROM session_names WHERE session_id = ?').get(sessionId);
-  if (existing) {
-    db.prepare('UPDATE session_names SET name = ?, updated_by = ?, updated_at = datetime(\'now\') WHERE session_id = ?')
-      .run(name.trim(), req.user.id, sessionId);
-  } else {
-    db.prepare('INSERT INTO session_names (session_id, name, updated_by) VALUES (?, ?, ?)')
-      .run(sessionId, name.trim(), req.user.id);
-  }
+  db.prepare(`
+    INSERT INTO session_names (session_id, name, updated_by) VALUES (?, ?, ?)
+    ON CONFLICT(session_id)
+    DO UPDATE SET name = excluded.name, updated_by = excluded.updated_by, updated_at = datetime('now')
+  `).run(sessionId, name.trim(), req.user.id);
 
   res.json({ sessionId, name: name.trim() });
 });
@@ -139,11 +136,13 @@ router.put('/sessions/:id/tags', ensureAuthenticated, (req, res) => {
 
   const db = getDb();
   try {
-    db.prepare('DELETE FROM session_tags WHERE session_id = ?').run(req.params.id);
-    for (const tag of tags) {
-      db.prepare('INSERT INTO session_tags (session_id, tag, created_by) VALUES (?, ?, ?)')
-        .run(req.params.id, tag, req.user.id);
-    }
+    db.transaction(() => {
+      db.prepare('DELETE FROM session_tags WHERE session_id = ?').run(req.params.id);
+      for (const tag of tags) {
+        db.prepare('INSERT INTO session_tags (session_id, tag, created_by) VALUES (?, ?, ?)')
+          .run(req.params.id, tag, req.user.id);
+      }
+    });
     res.json({ sessionId: req.params.id, tags });
   } catch (err) {
     console.error('Error setting tags:', err);
@@ -174,12 +173,11 @@ router.put('/sessions/:id/star', ensureAuthenticated, (req, res) => {
   const db = getDb();
   try {
     if (starred) {
-      const existing = db.prepare('SELECT session_id FROM session_starred WHERE session_id = ?')
-        .get(req.params.id);
-      if (!existing) {
-        db.prepare('INSERT INTO session_starred (session_id, starred_by) VALUES (?, ?)')
-          .run(req.params.id, req.user.id);
-      }
+      // Already starred: keep whoever starred it first
+      db.prepare(`
+        INSERT INTO session_starred (session_id, starred_by) VALUES (?, ?)
+        ON CONFLICT(session_id) DO NOTHING
+      `).run(req.params.id, req.user.id);
     } else {
       db.prepare('DELETE FROM session_starred WHERE session_id = ?').run(req.params.id);
     }
@@ -398,14 +396,11 @@ router.put('/sessions/:id/icons', ensureAuthenticated, (req, res) => {
 
   const db = getDb();
   try {
-    const existing = db.prepare('SELECT 1 FROM track_icons WHERE session_id = ? AND track_name = ?').get(sessionId, track_name);
-    if (existing) {
-      db.prepare('UPDATE track_icons SET icon = ?, updated_at = datetime(\'now\') WHERE session_id = ? AND track_name = ?')
-        .run(icon, sessionId, track_name);
-    } else {
-      db.prepare('INSERT INTO track_icons (session_id, track_name, icon) VALUES (?, ?, ?)')
-        .run(sessionId, track_name, icon);
-    }
+    db.prepare(`
+      INSERT INTO track_icons (session_id, track_name, icon) VALUES (?, ?, ?)
+      ON CONFLICT(session_id, track_name)
+      DO UPDATE SET icon = excluded.icon, updated_at = datetime('now')
+    `).run(sessionId, track_name, icon);
     res.json({ message: 'Icon saved', track_name, icon });
   } catch (err) {
     console.error('Error saving track icon:', err);
